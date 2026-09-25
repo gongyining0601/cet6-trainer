@@ -631,6 +631,7 @@
   }
   function submitGroup() {
     var s = session, it = s.item;
+    if (s.submitted) return; // 防重复判分/重复记录（连点、回车等任何路径只记一次）
     var ans = 0; s.qids.forEach(function (id) { if (s.draft[id]) ans++; });
     if (ans < s.qids.length) { toast('还有 ' + (s.qids.length - ans) + ' 题未作答'); return; }
     var right = 0;
