@@ -44,7 +44,7 @@
   CORE.PLAN_TARGET = 25;
   CORE.PLAN_CAP = 40;
   CORE.REVIEW_CAP = 10;
-  CORE.PLAN_VERSION = 2; // 清单结构版本：低于此版本的旧版 plan 会被 ensurePlan 丢弃重算
+  CORE.PLAN_VERSION = 3; // 清单结构版本：低于此版本的旧版 plan 会被 ensurePlan 丢弃重算（v3=每日保底一组听力）
 
   // ---------- 题库索引 ----------
   CORE.allQuestions = function (banks) {
@@ -247,6 +247,22 @@
     }
     // 3) 新题完整单元装包（最近考期优先，已做完的整单元跳过）
     var acc = 0, i = 0;
+    // 3a) 每日保底一组听力：听力是持续性技能，一天不练就生疏。
+    //     部分卷（27 套第3套等）无听力题，纯贪心会连续多日排不进听力，这里显式保证。
+    var hasListening = items.some(function (it) { return it.type === 'listening'; });
+    if (!hasListening) {
+      for (var li = 0; li < units.length; li++) {
+        var lu = units[li];
+        if (lu.type !== 'listening') continue;
+        if (lu.qids.every(function (id) { return state.papers[id]; })) continue;
+        if (lu.qids.some(function (id) { return planIds[id]; })) continue;
+        if (lu.min > cap) continue;
+        items.push({ key: 'new-' + lu.type + '-' + lu.paperId + '-' + lu.qnos[0], type: lu.type, qids: lu.qids.slice(), paperId: lu.paperId, label: lu.label, done: false, minutes: 0 });
+        lu.qids.forEach(function (id) { planIds[id] = 1; });
+        acc += lu.min;
+        break;
+      }
+    }
     while (acc < target && i < units.length) {
       var u = units[i++];
       var allSeen = u.qids.every(function (id) { return state.papers[id]; });
