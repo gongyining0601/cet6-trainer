@@ -317,9 +317,11 @@
 
   // ---------- 存取 ----------
   CORE.STORAGE_KEY = 'cet6_p1_state_v1';
-  CORE.loadState = function (storage) {
+  // 多账号：每个手机号一个独立存档，数据保存在各自设备本地
+  CORE.stateKey = function (phone) { return CORE.STORAGE_KEY + '_' + phone; };
+  CORE.loadState = function (storage, key) {
     try {
-      var raw = storage.getItem(CORE.STORAGE_KEY);
+      var raw = storage.getItem(key || CORE.STORAGE_KEY);
       if (!raw) return CORE.newState();
       var s = JSON.parse(raw);
       if (!s.version) return CORE.newState();
@@ -338,8 +340,23 @@
   CORE.newState = function () {
     return { version: 1, history: {}, papers: {}, wrongbook: {}, plan: null, essays: {} };
   };
-  CORE.saveState = function (storage, state) {
-    storage.setItem(CORE.STORAGE_KEY, JSON.stringify(state));
+  CORE.saveState = function (storage, state, key) {
+    storage.setItem(key || CORE.STORAGE_KEY, JSON.stringify(state));
+  };
+
+  // 考点维度正确率：按每题 points 标签聚合（历史做题记录，不新增练习量）
+  CORE.accuracyByPoint = function (state, banks) {
+    var by = {};
+    Object.keys(state.papers).forEach(function (qid) {
+      var st = state.papers[qid];
+      var q = CORE.findQ(banks, qid);
+      if (!q || !q.points) return;
+      q.points.forEach(function (pt) {
+        by[pt] = by[pt] || { seen: 0, right: 0 };
+        by[pt].seen += st.seen; by[pt].right += st.right;
+      });
+    });
+    return by;
   };
 
   // ---------- 判题 ----------
