@@ -32,14 +32,18 @@
 
   // ---------- 题型 ----------
   CORE.TYPE_META = {
-    listening: { zh: '听力', minPerQ: 1.4, group: '听力·每日一组' },
-    cloze:     { zh: '选词填空', minPerQ: 0.6, group: '选词填空·整篇文章' },
-    match:     { zh: '信息匹配', minPerQ: 1.3, group: '信息匹配·每日三条' },
-    reading:   { zh: '仔细阅读', minPerQ: 1.6, group: '仔细阅读·每日一篇' },
-    writing:   { zh: '写作', minPerQ: 15, group: '写作·隔日一练' },
-    translation: { zh: '翻译', minPerQ: 12, group: '翻译·隔日一练' }
+    listening: { zh: '听力', minPerQ: 1.4, group: '听力·同卷连续4题' },
+    cloze:     { zh: '选词填空', minPerQ: 0.6, group: '选词填空·整篇' },
+    match:     { zh: '信息匹配', minPerQ: 1.3, group: '信息匹配·整篇' },
+    reading:   { zh: '仔细阅读', minPerQ: 1.6, group: '仔细阅读·整篇' },
+    writing:   { zh: '写作', minPerQ: 15, group: '写作·每周一练' },
+    translation: { zh: '翻译', minPerQ: 12, group: '翻译·每周一练' }
   };
   CORE.INTERVALS = [1, 2, 4, 7, 15];
+  // 预算制调度参数（分钟）：目标~上限浮动，错题复习封顶
+  CORE.PLAN_TARGET = 25;
+  CORE.PLAN_CAP = 40;
+  CORE.REVIEW_CAP = 10;
 
   // ---------- 题库索引 ----------
   CORE.allQuestions = function (banks) {
@@ -159,89 +163,117 @@
     return a;
   };
 
-  // ---------- 今日清单生成 ----------
-  /* 规则（默认约 30 分钟）：
-     1. 错题到期优先进入（听力/选词/匹配/阅读各自吸纳）
-     2. 其余从未见过的新题中按日期种子抽取
-     3. 写作与翻译按日期奇偶轮换，每天只出现一个
-     4. 加练：在已有清单外再抽一组 */
-  CORE.genPlan = function (state, banks, dateStr) {
-    var all = CORE.allQuestions(banks);
-    var rand = CORE.seedRand(dateStr + '|' + banks.length);
-    var items = [];
-    var used = {};
-    function take(type, n, pool) {
-      pool = pool.filter(function (x) { return !used[x.q.id]; });
-      var pick = CORE.shuffledBy(pool, rand).slice(0, n);
-      pick.forEach(function (x) { used[x.q.id] = 1; });
-      return pick.map(function (x) { return x.q.id; });
-    }
-    function poolOf(type, onlyUnseen) {
-      return all.filter(function (x) {
-        if (x.q.type !== type) return false;
-        if (onlyUnseen && state.papers[x.q.id]) return false;
-        return true;
+  // ---------- 今日清单生成（P7 预算制 · 完整优先 · 块间轮换）----------
+  /* 规则：
+     1. 到期错题最优先：按薄弱程度（逾期>错次>稳固度）排序，同卷同题型相邻打包成组，封顶 REVIEW_CAP 分钟
+     2. 周六安排写译一篇（写作/翻译隔周轮换，占当日额度不加量）
+     3. 新题按完整单元装包：听力=同卷同Section连续4题 / 选词=整篇 / 匹配=整篇 / 阅读=整篇5题
+        单元推进按最近考期优先（2026→2015），整单元做完的自动跳过；装满目标分钟数即收，
+        最后一个单元允许溢出到上限（每日 25~40 分钟浮动） */
+  CORE.paperOrder = function (banks) { // 最近考期优先
+    return banks.slice().sort(function (a, b) { return a.id < b.id ? 1 : (a.id > b.id ? -1 : 0); });
+  };
+  var LISTEN_SECTIONS = [[1, 8, '长对话'], [9, 15, '篇章'], [16, 25, '讲座']];
+  function mkUnit(paper, type, qs, label) {
+    return {
+      paperId: paper.id, type: type, label: label,
+      qids: qs.map(function (q) { return q.id; }),
+      qnos: qs.map(function (q) { return q.qno; }),
+      min: Math.round(CORE.TYPE_META[type].minPerQ * qs.length * 10) / 10
+    };
+  }
+  // 全量单元清单（确定性顺序：卷从最近到最早，卷内听力→选词→匹配→阅读）
+  CORE.unitList = function (banks) {
+    var units = [];
+    CORE.paperOrder(banks).forEach(function (p) {
+      var qs = (p.questions || []).slice().sort(function (a, b) { return a.qno - b.qno; });
+      LISTEN_SECTIONS.forEach(function (sec) {
+        var lst = qs.filter(function (q) { return q.type === 'listening' && q.qno >= sec[0] && q.qno <= sec[1]; });
+        for (var i = 0; i < lst.length; i += 4) {
+          var chunk = lst.slice(i, i + 4);
+          units.push(mkUnit(p, 'listening', chunk, '听力·' + sec[2] + ' ' + chunk[0].qno + '-' + chunk[chunk.length - 1].qno));
+        }
       });
+      var cl = qs.filter(function (q) { return q.type === 'cloze'; });
+      if (cl.length) units.push(mkUnit(p, 'cloze', cl, '选词填空·整篇 26-35'));
+      var mt = qs.filter(function (q) { return q.type === 'match'; });
+      if (mt.length) units.push(mkUnit(p, 'match', mt, '信息匹配·整篇 36-45'));
+      var rd = qs.filter(function (q) { return q.type === 'reading'; });
+      for (var r = 0; r + 5 <= rd.length; r += 5) {
+        units.push(mkUnit(p, 'reading', rd.slice(r, r + 5), '仔细阅读·整篇 ' + rd[r].qno + '-' + (rd[r].qno + 4)));
+      }
+    });
+    return units;
+  };
+  CORE.genPlan = function (state, banks, dateStr) {
+    var items = [];
+    var planIds = {};
+    // 1) 到期错题复习组（封顶 REVIEW_CAP 分钟；同卷同题型相邻打包保持语境完整）
+    var reviewMin = 0;
+    var groups = [];
+    CORE.reviewQueue(state, banks, dateStr).forEach(function (qid) {
+      var q = CORE.findQ(banks, qid);
+      var paper = CORE.findPaper(banks, qid);
+      if (!q || !paper) return;
+      var per = CORE.TYPE_META[q.type] ? CORE.TYPE_META[q.type].minPerQ : 1;
+      if (reviewMin + per > CORE.REVIEW_CAP) return; // 放不下的留到明天，队列不丢
+      reviewMin += per; planIds[qid] = 1;
+      var last = groups[groups.length - 1];
+      if (last && last.paperId === paper.id && last.type === q.type) last.qids.push(qid);
+      else groups.push({ paperId: paper.id, type: q.type, qids: [qid] });
+    });
+    groups.forEach(function (g) {
+      g.qids.sort(function (a, b) {
+        return C_findQno(banks, a) - C_findQno(banks, b);
+      });
+      items.push({ key: 'review-' + g.type + '-' + g.paperId, type: g.type, qids: g.qids, paperId: g.paperId, label: '错题复习·' + CORE.TYPE_META[g.type].zh + ' ' + g.qids.length + '题', done: false, minutes: 0, review: true });
+    });
+    // 2) 周六写译一篇（占当日额度）
+    var target = CORE.PLAN_TARGET, cap = CORE.PLAN_CAP;
+    var dParts = dateStr.split('-').map(Number);
+    var dow = new Date(dParts[0], dParts[1] - 1, dParts[2]).getDay();
+    if (dow === 6) {
+      var weekIdx = Math.floor(CORE.dayDiff('2020-01-04', dateStr) / 7); // 2020-01-04 为周六锚点
+      var wtype = weekIdx % 2 === 0 ? 'writing' : 'translation';
+      var papers = CORE.paperOrder(banks);
+      var wp = papers[(weekIdx % papers.length + papers.length) % papers.length];
+      items.push({ key: 'essay-' + dateStr, type: wtype, qids: [], paperId: wp.id, done: false, minutes: 0 });
+      var wmin = wtype === 'writing' ? 15 : 12;
+      target -= wmin; cap -= wmin;
     }
-    var due = CORE.dueWrongIds(state, dateStr);
-    function duePool(type) {
-      return all.filter(function (x) { return x.q.type === type && due.indexOf(x.q.id) >= 0; });
+    // 3) 新题完整单元装包（最近考期优先，已做完的整单元跳过）
+    var units = CORE.unitList(banks);
+    var acc = 0, i = 0;
+    while (acc < target && i < units.length) {
+      var u = units[i++];
+      var allSeen = u.qids.every(function (id) { return state.papers[id]; });
+      if (allSeen) continue;
+      if (u.qids.some(function (id) { return planIds[id]; })) continue; // 今日复习已含
+      if (u.min > cap - acc) break; // 超上限，今天到此为止
+      items.push({ key: 'new-' + u.type + '-' + u.paperId + '-' + u.qnos[0], type: u.type, qids: u.qids.slice(), paperId: u.paperId, label: u.label, done: false, minutes: 0 });
+      u.qids.forEach(function (id) { planIds[id] = 1; });
+      acc += u.min;
     }
-    // 听力 5 题（到期错题优先）
-    var lIds = take('listening', 5, duePool('listening').length ? duePool('listening').concat(poolOf('listening', true)) : poolOf('listening', true));
-    if (lIds.length) items.push({ key: 'listening', type: 'listening', qids: lIds, done: false, minutes: 0 });
-    // 选词填空：半篇 5 空（同一套卷的 26-30 或 31-35）
-    var cBase = duePool('cloze')[0] || poolOf('cloze', true)[0] || all.filter(function (x) { return x.q.type === 'cloze'; })[0];
-    if (cBase) {
-      var paper = CORE.findPaper(banks, cBase.q.id);
-      var half = (CORE.dayDiff(dateStr, dateStr) + Number(dateStr.slice(-2))) % 2; // 按日号奇偶取前后半
-      var start = 26 + half * 5;
-      var cIds = paper.questions.filter(function (q) { return q.type === 'cloze' && q.qno >= start && q.qno < start + 5; }).map(function (q) { return q.id; });
-      cIds.forEach(function (id) { used[id] = 1; });
-      items.push({ key: 'cloze', type: 'cloze', qids: cIds, paperId: paper.id, done: false, minutes: 0 });
-    }
-    // 信息匹配 3 条
-    var mIds = take('match', 3, duePool('match').length ? duePool('match').concat(poolOf('match', true)) : poolOf('match', true));
-    if (mIds.length) items.push({ key: 'match', type: 'match', qids: mIds, done: false, minutes: 0 });
-    // 仔细阅读：一整篇（5 题）
-    var rBase = duePool('reading')[0] || poolOf('reading', true)[0] || all.filter(function (x) { return x.q.type === 'reading'; })[0];
-    if (rBase) {
-      var rPaper = CORE.findPaper(banks, rBase.q.id);
-      var rIds = rPaper.questions.filter(function (q) { return q.type === 'reading' && Math.abs(q.qno - rBase.q.qno) <= 4; }).map(function (q) { return q.id; });
-      rIds.forEach(function (id) { used[id] = 1; });
-      items.push({ key: 'reading', type: 'reading', qids: rIds, paperId: rPaper.id, done: false, minutes: 0 });
-    }
-    // 写作 / 翻译 轮换；题面按日期在全套卷间轮换，避免永远用同一套
-    var dayNum = Number(dateStr.slice(-2));
-    var wtype = (dayNum % 2 === 0) ? 'writing' : 'translation';
-    var wIdx = (Number(dateStr.slice(5, 7)) * 31 + dayNum) % banks.length;
-    items.push({ key: wtype, type: wtype, qids: [], paperId: banks[wIdx].id, done: false, minutes: 0 });
     return { date: dateStr, items: items };
   };
+  function C_findQno(banks, qid) {
+    var q = CORE.findQ(banks, qid);
+    return q ? q.qno : 0;
+  }
 
-  // 加练：再抽一组指定题型
+  // 加练：抽出该题型下一个未做完的完整单元
   CORE.extraGroup = function (state, banks, dateStr, type) {
-    var all = CORE.allQuestions(banks);
-    var rand = CORE.seedRand(dateStr + '|extra|' + type + '|' + Object.keys(state.papers).length);
     var planIds = {};
     (state.plan && state.plan.items || []).forEach(function (it) { (it.qids || []).forEach(function (id) { planIds[id] = 1; }); });
-    var pool = all.filter(function (x) { return x.q.type === type && !planIds[x.q.id]; });
-    if (type === 'reading' && pool.length) {
-      var base = CORE.shuffledBy(pool, rand)[0];
-      var paper = CORE.findPaper(banks, base.q.id);
-      var ids = paper.questions.filter(function (q) { return q.type === 'reading' && Math.abs(q.qno - base.q.qno) <= 4; }).map(function (q) { return q.id; });
-      return { key: 'extra-' + type + '-' + Date.now(), type: type, qids: ids, paperId: paper.id, done: false, minutes: 0, extra: true };
+    var units = CORE.unitList(banks);
+    for (var i = 0; i < units.length; i++) {
+      var u = units[i];
+      if (u.type !== type) continue;
+      if (u.qids.every(function (id) { return state.papers[id]; })) continue;
+      if (u.qids.some(function (id) { return planIds[id]; })) continue;
+      return { key: 'extra-' + type + '-' + Date.now(), type: type, qids: u.qids.slice(), paperId: u.paperId, label: u.label, done: false, minutes: 0, extra: true };
     }
-    if (type === 'cloze' && pool.length) {
-      var cbase = CORE.shuffledBy(pool, rand)[0];
-      var cpaper = CORE.findPaper(banks, cbase.q.id);
-      var half = Math.floor(rand() * 2), start = 26 + half * 5;
-      var cids = cpaper.questions.filter(function (q) { return q.type === 'cloze' && q.qno >= start && q.qno < start + 5; }).map(function (q) { return q.id; });
-      return { key: 'extra-' + type + '-' + Date.now(), type: type, qids: cids, paperId: cpaper.id, done: false, minutes: 0, extra: true };
-    }
-    var n = type === 'listening' ? 5 : (type === 'match' ? 3 : 5);
-    var ids2 = CORE.shuffledBy(pool, rand).slice(0, n).map(function (x) { return x.q.id; });
-    return ids2.length ? { key: 'extra-' + type + '-' + Date.now(), type: type, qids: ids2, done: false, minutes: 0, extra: true } : null;
+    return null;
   };
 
   // ---------- 统计 ----------

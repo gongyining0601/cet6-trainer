@@ -47,6 +47,7 @@
   .prog i { display:block; height:100%; background:var(--brand); }
   .badge { font-size:12px; border-radius:6px; padding:1px 7px; margin-left:6px; }
   .badge.extra { background:#fdf2f8; color:#be185d; }
+  .badge.review { background:#fef3c7; color:#b45309; }
 
   .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
   .bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
@@ -299,7 +300,7 @@
   var store = window.localStorage;
   var state = C.loadState(store);
   var today = C.todayStr();
-  var session = null; // {item, qids, idx, picked, results}
+  var session = null; // {item, qids, draft, submitted, rightCount}
 
   // ---------- 工具 ----------
   function $(id) { return document.getElementById(id); }
@@ -340,8 +341,8 @@
       card.className = 'card plan-item' + (it.done ? ' done' : '');
       card.innerHTML =
         '<div class="ic">' + (it.done ? '✓' : esc(meta.zh.slice(0, 1))) + '</div>' +
-        '<div class="bd"><b>' + esc(meta.group || meta.zh) + (it.extra ? '<span class="badge extra">加练</span>' : '') + '</b>' +
-        '<div class="muted">' + (n ? n + ' 题 · ' : '') + '预计 ' + itemMinutes(it) + ' 分钟</div>' +
+        '<div class="bd"><b>' + esc(it.label || meta.group || meta.zh) + (it.extra ? '<span class="badge extra">加练</span>' : '') + (it.review ? '<span class="badge review">复习</span>' : '') + '</b>' +
+        '<div class="muted">' + (it.paperId ? esc(it.paperId) + ' · ' : '') + (n ? n + ' 题 · ' : '') + '预计 ' + itemMinutes(it) + ' 分钟</div>' +
         '<div class="prog"><i style="width:' + (it.done ? 100 : 0) + '%"></i></div></div>' +
         '<button class="btn small' + (it.done ? ' ghost' : '') + '">' + (it.done ? '已完成' : '开始') + '</button>';
       card.querySelector('button').onclick = function () { startItem(it); };
@@ -349,7 +350,7 @@
     });
     var h = state.history[today];
     totalMin = h ? h.minutes : 0;
-    $('planSummary').textContent = '今日清单 ' + doneCount + '/' + plan.items.length + ' 组';
+    $('planSummary').textContent = '今日清单 ' + doneCount + '/' + plan.items.length + ' 组 · 目标 25–40 分钟';
     $('todayMinutes').textContent = '已练 ' + totalMin + ' 分钟（清单预计 ' + Math.round(planMin) + ' 分钟）';
     var streak = C.streak(state.history, today);
     $('streakChip').textContent = '🔥 ' + streak + ' 天';
@@ -386,26 +387,47 @@
     renderToday();
   }
 
-  // ---------- 做题 ----------
+  // ---------- 做题（整组同屏 · 断点续做）----------
   function startItem(it) {
-    session = { item: it, qids: (it.qids || []).slice(), idx: 0, picked: null, revealed: false, wrongSession: !it.key && it.isWrong };
+    session = { item: it, qids: (it.qids || []).slice(), draft: (it.draft && !it.done) ? it.draft : {}, submitted: false };
     $('quiz').classList.add('show');
-    renderQuestion();
+    renderGroup();
   }
   function quizExit() {
     $('quiz').classList.remove('show');
     session = null;
     renderToday(); renderWrong(); renderStat();
   }
-  function renderQuestion() {
+  function saveDraft() { // 草稿即时存入清单条目（plan 在 state 内，持久化），退出浏览器可续做
+    var s = session;
+    if (s && s.item && s.item.qids && !s.item.isWrong) { s.item.draft = s.draft; save(); }
+  }
+  // 连续同材料题块：同卷听音频 / 选词同篇 / 匹配同篇 / 阅读同篇 → 材料只渲染一次，题目依次排列
+  function buildRuns(qids) {
+    var runs = [];
+    qids.forEach(function (id) {
+      var q = C.findQ(BANKS, id); if (!q) return;
+      var paper = C.findPaper(BANKS, id);
+      var mk;
+      if (q.type === 'listening') mk = 'audio';
+      else if (q.type === 'cloze') mk = 'cloze';
+      else if (q.type === 'match') mk = 'match';
+      else mk = 'read' + Math.floor((q.qno - 46) / 5);
+      var last = runs[runs.length - 1];
+      if (last && last.paper === paper && last.type === q.type && last.mk === mk) last.qs.push(q);
+      else runs.push({ paper: paper, type: q.type, mk: mk, qs: [q] });
+    });
+    return runs;
+  }
+  function renderGroup() {
     var s = session, it = s.item;
     var body = $('quizBody');
-    // 写作/翻译组
+    // 写作/翻译组（每周一练）
     if (it.type === 'writing' || it.type === 'translation') {
       var paper = paperForItem(it);
       var wt = it.type === 'writing' ? paper.writing : paper.translation;
       var label = it.type === 'writing' ? '写作' : '翻译（汉译英）';
-      $('quizProg').textContent = label;
+      $('quizProg').textContent = label + ' · 每周一练';
       var draft = (state.essays[it.type] && state.essays[it.type].text) || '';
       body.innerHTML =
         '<div class="card"><h3>' + label + '题面（' + esc(paper.id) + '）</h3>' +
@@ -422,119 +444,125 @@
       $('essaySample').onclick = function () { $('sampleBox').classList.toggle('show'); };
       return;
     }
-    // 普通题目
-    if (s.idx >= s.qids.length) { // 组内做完
-      if (it.isWrong) { toast('本轮错题重练完成'); quizExit(); }
-      else { finishItem(it); quizExit(); }
-      return;
-    }
-    var q = C.findQ(BANKS, s.qids[s.idx]);
-    var paper = C.findPaper(BANKS, q.id);
-    $('quizProg').textContent = '第 ' + (s.idx + 1) + '/' + s.qids.length + ' 题 · ' + (q.typeZh || '') + ' · ' + paper.id;
+    // 普通题组：整组同屏，逐题点选，组底一次判分
+    var answered = 0;
+    s.qids.forEach(function (id) { if (s.draft[id]) answered++; });
+    $('quizProg').textContent = '本组 ' + s.qids.length + ' 题 · 已答 ' + answered + (s.submitted ? ' · 已判分' : '');
     var html = '';
-
-    // 材料区
-    if (q.type === 'listening') {
-      html += '<div class="card linkline"><b>听力音频</b>：先点<a href="' + esc(paper.listeningUrl) + '" target="_blank" rel="noopener">打开在线听力页</a>（新标签页，可拖到手机上听），听完后回来作答。题号 ' + esc(String(q.qno)) + '。</div>';
-    } else if (q.type === 'cloze') {
-      html += renderClozePassage(paper, q);
-      html += '<div class="wordbank">' + (q.options || []).map(function (w) { return '<span>' + esc(w) + '</span>'; }).join('') + '</div>';
-    } else if (q.type === 'match') {
-      html += '<div class="passage collapsed" id="passBox"><b>' + esc(paper.matchIntro || '') + '</b>\n\n' +
-        (paper.matchParagraphs || []).map(function (p) { return '[' + p.label + '] ' + p.text; }).join('\n\n') + '</div>' +
-        '<div class="passage-toggle"><button id="passTg">展开全部 13 段 ▾</button></div>';
-    } else if (q.type === 'reading') {
-      var rp = (paper.readingPassages || {})[String(q.qno)] || '';
-      html += '<div class="passage collapsed" id="passBox">' + esc(rp) + '</div>' +
-        '<div class="passage-toggle"><button id="passTg">展开原文 ▾</button></div>';
+    buildRuns(s.qids).forEach(function (run) {
+      if (run.type === 'listening') {
+        html += '<div class="card linkline"><b>🎧 听力音频</b>：点<a href="' + esc(run.paper.listeningUrl) + '" target="_blank" rel="noopener">打开在线听力页</a>（新标签页播放），本组 ' + run.qs.length + ' 题共用这一段录音。</div>';
+      } else if (run.type === 'cloze') {
+        html += renderClozePassage(run.paper, run.qs);
+        html += '<div class="wordbank">' + (run.qs[0].options || []).map(function (w) { return '<span>' + esc(w) + '</span>'; }).join('') + '</div>';
+      } else if (run.type === 'match') {
+        html += '<div class="passage" style="max-height:none"><b>' + esc(run.paper.matchIntro || '') + '</b>\n\n' +
+          (run.paper.matchParagraphs || []).map(function (p) { return '[' + p.label + '] ' + p.text; }).join('\n\n') + '</div>';
+      } else if (run.type === 'reading') {
+        var rp = (run.paper.readingPassages || {})[String(run.qs[0].qno)] || '';
+        html += '<div class="passage" style="max-height:none">' + esc(rp) + '</div>';
+      }
+      run.qs.forEach(function (q) { html += renderOneQ(q, run.paper); });
+    });
+    if (!s.submitted) {
+      html += '<div class="card" id="groupBar"><div class="row"><span class="muted">逐题点选作答，草稿自动保存；中途退出回来可续做</span>' +
+        '<button class="btn" id="groupSubmit"' + (answered >= s.qids.length ? '' : ' disabled') + '>提交本组（' + answered + '/' + s.qids.length + '）</button></div></div>';
+    } else {
+      html += '<div class="card" id="groupBar"><div class="row"><b>本组结果：' + (s.rightCount || 0) + '/' + s.qids.length + ' 答对</b>' +
+        '<button class="btn ok" id="groupDone">完成，返回今日</button></div></div>';
     }
-
-    // 题干与选项
-    html += '<div class="card"><b>' + (q.type === 'match' ? '' : 'Q' + esc(String(q.qno)) + '. ') + esc(q.stem) + '</b>';
+    body.innerHTML = html;
+    if (!s.submitted) {
+      Array.prototype.forEach.call(body.querySelectorAll('.opt'), function (b) {
+        b.onclick = function () {
+          var qid = b.getAttribute('data-q');
+          s.draft[qid] = b.getAttribute('data-v');
+          Array.prototype.forEach.call(body.querySelectorAll('.opt[data-q="' + qid + '"]'), function (x) { x.classList.remove('sel'); });
+          b.classList.add('sel');
+          saveDraft();
+          var ans = 0; s.qids.forEach(function (id) { if (s.draft[id]) ans++; });
+          $('quizProg').textContent = '本组 ' + s.qids.length + ' 题 · 已答 ' + ans;
+          var sb = $('groupSubmit');
+          if (sb) { sb.disabled = false; sb.textContent = '提交本组（' + ans + '/' + s.qids.length + '）'; }
+        };
+      });
+      $('groupSubmit').onclick = submitGroup;
+    } else {
+      $('groupDone').onclick = function () {
+        if (it.isWrong) { toast('本轮错题重练完成'); quizExit(); }
+        else { finishItem(it); quizExit(); }
+      };
+    }
+  }
+  function optBtn(q, v, text) {
+    var s = session;
+    var pick = s.draft[q.id] || null;
+    var cls = 'opt';
+    if (s.submitted) {
+      if (v === q.answer) cls += ' right';
+      else if (v === pick) cls += ' wrongpick';
+      return '<button class="' + cls + '" data-q="' + esc(q.id) + '" data-v="' + esc(v) + '" disabled>' + text + '</button>';
+    }
+    if (v === pick) cls += ' sel';
+    return '<button class="' + cls + '" data-q="' + esc(q.id) + '" data-v="' + esc(v) + '">' + text + '</button>';
+  }
+  function renderOneQ(q, paper) {
+    var html = '<div class="card"><b>' + (q.type === 'match' ? '' : 'Q' + esc(String(q.qno)) + '. ') + esc(q.stem) + '</b>';
     if (q.type === 'match') {
       html += '<div class="muted" style="margin:6px 0 10px">这条信息出现在哪个段落？</div>';
       var letters = (paper.matchParagraphs || []).map(function (p) { return p.label; });
       html += '<div style="display:flex;flex-wrap:wrap;gap:8px">' + letters.map(function (L) {
-        return '<button class="opt" style="width:auto" data-v="' + L + '">' + L + ' 段</button>';
+        return optBtn(q, L, L + ' 段');
       }).join('') + '</div>';
     } else if (q.type === 'cloze') {
       html += '<div class="muted" style="margin:6px 0 10px">第 ' + esc(String(q.qno)) + ' 空应填哪个词？</div>';
       html += (q.options || []).map(function (o, i) {
-        return '<button class="opt" data-v="' + String.fromCharCode(65 + i) + '">' + esc(o) + '</button>';
+        return optBtn(q, String.fromCharCode(65 + i), esc(o));
       }).join('');
     } else {
       html += '<div style="margin-top:10px">' + (q.options || []).map(function (o, i) {
-        return '<button class="opt" data-v="' + String.fromCharCode(65 + i) + '">' + esc(o) + '</button>';
+        return optBtn(q, String.fromCharCode(65 + i), esc(o));
       }).join('') + '</div>';
     }
-    html += '<div class="actions" style="margin-top:12px"><button class="btn" id="submitBtn" disabled>提交答案</button></div>';
-    html += '<div id="analysisBox"></div></div>';
-    body.innerHTML = html;
-
-    // 折叠开关
-    var tg = $('passTg');
-    if (tg) tg.onclick = function () {
-      var pb = $('passBox'); pb.classList.toggle('collapsed');
-      tg.textContent = pb.classList.contains('collapsed') ? '展开 ▾' : '收起 ▴';
-    };
-
-    // 选项交互
-    var picked = null;
-    var btns = body.querySelectorAll('.opt');
-    Array.prototype.forEach.call(btns, function (b) {
-      b.onclick = function () {
-        if (session.revealed) return;
-        picked = b.getAttribute('data-v');
-        Array.prototype.forEach.call(btns, function (x) { x.classList.remove('sel'); });
-        b.classList.add('sel');
-        $('submitBtn').disabled = false;
-      };
-    });
-    $('submitBtn').onclick = function () {
-      if (!picked) return;
-      session.revealed = true;
-      var correct = C.judge(q, picked);
-      // 判题可视化
-      Array.prototype.forEach.call(btns, function (b) {
-        var v = b.getAttribute('data-v');
-        b.disabled = true;
-        if (v === q.answer) b.classList.add('right');
-        else if (v === picked) b.classList.add('wrongpick');
-      });
-      // 记录结果（papers + 错题本调度）
-      C.recordResult(state, q.id, correct, today);
-      var h = histToday(); h.qCount++; if (correct) h.right++;
-      save();
-      // 解析面板
-      var box = $('analysisBox');
-      var pts = (q.points || []).map(function (p) { return '<span class="pt">' + esc(p) + '</span>'; }).join('');
-      box.innerHTML = '<div class="analysis ' + (correct ? '' : 'bad') + '">' +
-        '<div class="verdict ' + (correct ? 'ok' : 'bad') + '">' + (correct ? '✓ 答对了' : '✗ 答错了，已加入错题本（遗忘曲线自动安排复习，连对 5 次出库）') + '</div>' +
-        (pts ? '<div style="margin-bottom:8px">' + pts + '</div>' : '') +
-        '<div class="body">' + esc(q.analysis) + '</div>' +
-        '<div class="actions" style="margin-top:12px"><button class="btn" id="nextBtn">' +
-        (s.idx + 1 >= s.qids.length ? '完成本组' : '下一题 →') + '</button></div></div>';
-      $('nextBtn').onclick = function () {
-        s.idx++; s.revealed = false;
-        renderQuestion();
-      };
-      $('submitBtn').style.display = 'none';
-    };
+    if (session.submitted) {
+      var pick = session.draft[q.id] || null;
+      var ok = pick === q.answer;
+      html += '<div class="analysis ' + (ok ? '' : 'bad') + '">' +
+        '<div class="verdict ' + (ok ? 'ok' : 'bad') + '">' + (ok ? '✓ 答对了' : '✗ 答错了，已加入错题本（遗忘曲线自动安排复习，连对 5 次出库）') + '</div>' +
+        ((q.points || []).length ? '<div style="margin-bottom:8px">' + q.points.map(function (p) { return '<span class="pt">' + esc(p) + '</span>'; }).join('') + '</div>' : '') +
+        '<div class="body">' + esc(q.analysis) + '</div></div>';
+    }
+    return html + '</div>';
   }
-  function renderClozePassage(paper, q) {
+  function submitGroup() {
+    var s = session, it = s.item;
+    var ans = 0; s.qids.forEach(function (id) { if (s.draft[id]) ans++; });
+    if (ans < s.qids.length) { toast('还有 ' + (s.qids.length - ans) + ' 题未作答'); return; }
+    var right = 0;
+    s.qids.forEach(function (id) {
+      var q = C.findQ(BANKS, id);
+      var correct = C.judge(q, s.draft[id]);
+      if (correct) right++;
+      C.recordResult(state, id, correct, today);
+      var h = histToday(); h.qCount++; if (correct) h.right++;
+    });
+    s.submitted = true; s.rightCount = right;
+    if (it.qids && !it.isWrong) { delete it.draft; } // 判分后清空草稿
+    save();
+    renderGroup();
+    window.scrollTo(0, 0);
+  }
+  function renderClozePassage(paper, qs) {
     var txt = paper.clozePassage || '';
-    var groupQnos = session.qids.map(function (id) { return C.findQ(BANKS, id).qno; });
-    // 整篇文章完整展示（不截断不内部滚动），文章全读完再作答
-    var html = '<div class="passage" style="max-height:none;overflow:visible" id="passBox">' + esc(txt).replace(/(_{2,}|\s26\s*[-—_]*\s*)/, function (m) { return m; });
-    // 把空格编号高亮：passage 里通常以 "26"-"35" 数字留空。直接按数字标注
+    var qnos = qs.map(function (q) { return q.qno; });
+    var html = '<div class="passage" style="max-height:none;overflow:visible">' + esc(txt);
     html = html.replace(/\b(2[6-9]|3[0-5])\b/g, function (m) {
-      var n = Number(m);
-      var inGroup = groupQnos.indexOf(n) >= 0;
-      var isCur = (n === Number(q.qno));
-      return '<span class="blank-mark' + (isCur ? ' focus' : '') + '">' + m + (isCur ? ' ←本题' : (inGroup ? '' : '')) + '</span>';
+      if (qnos.indexOf(Number(m)) < 0) return m;
+      return '<span class="blank-mark">' + m + '</span>';
     });
     return html + '</div>';
   }
+
   function paperForItem(it) {
     if (it.paperId) {
       for (var i = 0; i < BANKS.length; i++) if (BANKS[i].id === it.paperId) return BANKS[i];
@@ -607,14 +635,11 @@
   function startWrongSession(ids) {
     var byType = {};
     ids.forEach(function (id) { var t = C.findQ(BANKS, id).type; (byType[t] = byType[t] || []).push(id); });
-    // 逐题型分组重练（同题按顺序过一遍）
+    // 混合题型组：renderGroup 会按题型/材料自动分段渲染
     var first = Object.keys(byType)[0];
     var item = { key: 'wrong-review', type: first, qids: byType[first], done: false, minutes: 0, isWrong: true };
-    // 混合题型：把其余题型的也串进去，renderQuestion 按 q.type 渲染
     Object.keys(byType).forEach(function (t) { if (t !== first) item.qids = item.qids.concat(byType[t]); });
     startItem(item);
-    session.mixedWrong = ids;
-    // 重练完成时只提示，不写清单
   }
 
   // ---------- 统计 ----------
@@ -706,7 +731,7 @@
     };
   });
   $('quizBack').onclick = function () {
-    if (session && session.revealed) { toast('本题已判分；退出后可从清单继续本组'); }
+    if (session && !session.submitted && Object.keys(session.draft || {}).length) { toast('草稿已保存，回来可续做'); }
     quizExit();
   };
 
