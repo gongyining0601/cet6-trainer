@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="六级打卡">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>CET6 每日打卡 · 真题练习</title>
+<style>
+  :root {
+    --bg:#f5f6f8; --card:#fff; --ink:#1c2333; --sub:#6b7280; --line:#e5e7eb;
+    --brand:#2f5af5; --ok:#16a34a; --bad:#dc2626; --warn:#d97706;
+    --r:12px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--ink); font-size:15px; line-height:1.65; }
+  #app { max-width:760px; margin:0 auto; padding:14px 14px 90px; }
+  header { display:flex; justify-content:space-between; align-items:baseline; padding:6px 2px 12px; }
+  header h1 { font-size:19px; }
+  header .date { color:var(--sub); font-size:13px; }
+  .streak-chip { display:inline-block; background:#fff3e0; color:var(--warn); border-radius:999px; padding:2px 10px; font-size:13px; font-weight:600; margin-left:8px; }
+
+  nav { position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--line); display:flex; z-index:50; }
+  nav button { flex:1; padding:11px 0 13px; background:none; border:none; font-size:13px; color:var(--sub); cursor:pointer; }
+  nav button.on { color:var(--brand); font-weight:700; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; margin-bottom:12px; }
+  .card h3 { font-size:15px; margin-bottom:6px; }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .muted { color:var(--sub); font-size:13px; }
+  .btn { background:var(--brand); color:#fff; border:none; border-radius:9px; padding:9px 16px; font-size:14px; cursor:pointer; }
+  .btn:disabled { background:#c3c8d4; cursor:not-allowed; }
+  .btn.ghost { background:#fff; color:var(--brand); border:1px solid var(--brand); }
+  .btn.small { padding:5px 12px; font-size:13px; }
+  .btn.ok { background:var(--ok); } .btn.warn { background:var(--warn); }
+
+  .plan-item { display:flex; align-items:center; gap:12px; }
+  .plan-item .ic { width:40px; height:40px; border-radius:10px; background:#eef2ff; color:var(--brand); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; flex:none; }
+  .plan-item .bd { flex:1; min-width:0; }
+  .plan-item.done .ic { background:#dcfce7; color:var(--ok); }
+  .prog { height:5px; background:#eef0f3; border-radius:3px; margin-top:5px; overflow:hidden; }
+  .prog i { display:block; height:100%; background:var(--brand); }
+  .badge { font-size:12px; border-radius:6px; padding:1px 7px; margin-left:6px; }
+  .badge.extra { background:#fdf2f8; color:#be185d; }
+
+  .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .total-min { font-size:13px; color:var(--sub); }
+
+  /* 做题视图 */
+  #quiz { position:fixed; inset:0; background:var(--bg); z-index:100; overflow-y:auto; display:none; }
+  #quiz.show { display:block; }
+  .quiz-wrap { max-width:760px; margin:0 auto; padding:14px; }
+  .qtop { display:flex; justify-content:space-between; align-items:center; padding-bottom:10px; }
+  .qtop .back { background:none; border:none; color:var(--sub); font-size:14px; cursor:pointer; padding:6px 0; }
+  .qprog { font-size:13px; color:var(--sub); }
+  .passage { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; margin-bottom:12px; font-size:14px; white-space:pre-wrap; max-height:340px; overflow-y:auto; }
+  .passage.collapsed { max-height:120px; overflow:hidden; position:relative; }
+  .passage-toggle { text-align:center; margin:-6px 0 12px; }
+  .passage-toggle button { background:none; border:none; color:var(--brand); cursor:pointer; font-size:13px; padding:4px 10px; }
+  .blank-mark { background:#fef08a; border-radius:3px; padding:0 3px; font-weight:700; }
+  .blank-mark.focus { background:var(--brand); color:#fff; }
+  .opt { display:block; width:100%; text-align:left; background:var(--card); border:1.5px solid var(--line); border-radius:10px; padding:10px 14px; margin-bottom:8px; font-size:14.5px; cursor:pointer; line-height:1.5; }
+  .opt.sel { border-color:var(--brand); background:#eef2ff; }
+  .opt.right { border-color:var(--ok); background:#f0fdf4; }
+  .opt.wrongpick { border-color:var(--bad); background:#fef2f2; }
+  .opt:disabled { cursor:default; }
+  .wordbank { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .wordbank span { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 10px; font-size:13.5px; }
+  .analysis { background:var(--card); border-left:4px solid var(--ok); border-radius:8px; padding:12px 14px; margin-top:12px; font-size:14px; }
+  .analysis.bad { border-left-color:var(--bad); }
+  .analysis .pt { display:inline-block; background:#eef2ff; color:var(--brand); border-radius:6px; padding:1px 8px; font-size:12.5px; margin:0 6px 6px 0; }
+  .analysis .body { white-space:pre-wrap; }
+  .verdict { font-weight:700; font-size:15px; margin-bottom:8px; }
+  .verdict.ok { color:var(--ok); } .verdict.bad { color:var(--bad); }
+  .essay-ta { width:100%; min-height:180px; border:1.5px solid var(--line); border-radius:10px; padding:12px; font-size:14.5px; font-family:inherit; resize:vertical; }
+  .sample { background:var(--card); border:1px dashed var(--line); border-radius:10px; padding:12px 14px; margin-top:12px; font-size:14px; white-space:pre-wrap; display:none; }
+  .sample.show { display:block; }
+  .linkline { margin-bottom:12px; }
+  .linkline a { color:var(--brand); }
+
+  /* 错题本 */
+  .wb-item { display:flex; align-items:center; gap:10px; padding:10px 2px; border-bottom:1px solid var(--line); }
+  .wb-item:last-child { border-bottom:none; }
+  .wb-item .meta { flex:1; min-width:0; font-size:13px; color:var(--sub); }
+  .wb-item .stem { color:var(--ink); font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip { font-size:12px; border-radius:6px; padding:1px 8px; flex:none; }
+  .chip.due { background:#fee2e2; color:var(--bad); }
+  .chip.sched { background:#e0e7ff; color:#4338ca; }
+
+  /* 统计 */
+  .heat { display:flex; flex-wrap:wrap; gap:3px; margin-top:8px; }
+  .heat i { width:12px; height:12px; border-radius:3px; background:#ebedf0; }
+  .heat i.f1 { background:#c6e5ff; } .heat i.f2 { background:#7cc0ff; }
+  .heat i.f3 { background:#2f5af5; } .heat i.floor { background:linear-gradient(135deg,#fbbf24,#f59e0b); }
+  .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  .stat-cell { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px; }
+  .stat-cell .v { font-size:22px; font-weight:800; }
+  .stat-cell .k { font-size:12.5px; color:var(--sub); }
+  table.acc { width:100%; border-collapse:collapse; margin-top:8px; font-size:13.5px; }
+  table.acc th, table.acc td { text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); }
+  .tips { font-size:13px; color:var(--sub); }
+  .tips li { margin:6px 0 6px 18px; }
+  #importFile { display:none; }
+  .toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#1c2333; color:#fff; border-radius:999px; padding:8px 20px; font-size:13.5px; z-index:300; opacity:0; transition:opacity .25s; pointer-events:none; }
+  .toast.show { opacity:.95; }
+  .empty { text-align:center; color:var(--sub); padding:26px 0; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>CET6 每日打卡<span class="streak-chip" id="streakChip">🔥 0 天</span></h1>
+    <span class="date" id="todayLabel"></span>
+  </header>
+
+  <!-- 今日 -->
+  <section id="page-today">
+    <div class="bar">
+      <b id="planSummary"></b>
+      <span class="total-min" id="todayMinutes"></span>
+    </div>
+    <div id="planList"></div>
+    <div class="card">
+      <div class="row">
+        <div>
+          <h3>加练（不设上限）</h3>
+          <div class="muted">在今日清单之外再抽一组，时间照常计入打卡</div>
+        </div>
+      </div>
+      <div class="actions" id="extraBtns"></div>
+    </div>
+    <div class="card">
+      <h3>今天状态</h3>
+      <div class="row" style="margin-top:6px">
+        <span class="muted" id="todayStatus"></span>
+      </div>
+      <div class="actions">
+        <button class="btn warn" id="floorBtn">底线模式（没时间也要保连击）</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 错题本 -->
+  <section id="page-wrong" style="display:none">
+    <div class="bar"><b>错题本</b><span class="total-min" id="wrongSummary"></span></div>
+    <div class="card" id="dueList"></div>
+    <div class="card" id="allWrongList"></div>
+  </section>
+
+  <!-- 统计 -->
+  <section id="page-stat" style="display:none">
+    <div class="bar"><b>学习统计</b><span class="total-min" id="statSummary"></span></div>
+    <div class="card">
+      <h3>最近 12 周</h3>
+      <div class="heat" id="heatmap"></div>
+      <div class="muted" style="margin-top:8px">蓝格=完成打卡，黄格=底线模式保连击，灰格=未打卡</div>
+    </div>
+    <div class="stat-grid" id="statGrid"></div>
+    <div class="card">
+      <h3>各题型正确率</h3>
+      <table class="acc" id="accTable"></table>
+    </div>
+  </section>
+
+  <!-- 备份 -->
+  <section id="page-backup" style="display:none">
+    <div class="bar"><b>备份与迁移</b></div>
+    <div class="card">
+      <h3>打卡数据在这里</h3>
+      <p class="tips" style="margin-top:4px">全部记录保存在<strong>本浏览器的本地存储</strong>里，不上传任何服务器。清浏览器数据、换电脑/手机前，请先导出。</p>
+      <div class="actions">
+        <button class="btn" id="exportBtn">导出备份 JSON</button>
+        <button class="btn ghost" id="importBtn">导入备份</button>
+        <input type="file" id="importFile" accept=".json">
+      </div>
+    </div>
+    <div class="card">
+      <h3>建议节奏</h3>
+      <ul class="tips">
+        <li>每周日导出一次，保存到 <b>D:\CET6\backup\</b></li>
+        <li>换设备：旧设备导出 → 新设备打开本页导入即可无缝衔接</li>
+        <li>文件名形如 cet6-backup-日期.json，留好别删</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>当前题库</h3>
+      <div id="bankInfo" class="muted"></div>
+    </div>
+  </section>
+
+  <nav>
+    <button data-p="today" class="on">今日</button>
+    <button data-p="wrong">错题本</button>
+    <button data-p="stat">统计</button>
+    <button data-p="backup">备份</button>
+  </nav>
+</div>
+
+<!-- 做题浮层 -->
+<div id="quiz">
+  <div class="quiz-wrap">
+    <div class="qtop">
+      <button class="back" id="quizBack">← 退出</button>
+      <span class="qprog" id="quizProg"></span>
+    </div>
+    <div id="quizBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="core.js"></script>
+  <script src="bank/cet6-2015-06-1.js"></script>
+  <script src="bank/cet6-2015-06-2.js"></script>
+  <script src="bank/cet6-2015-06-3.js"></script>
+  <script src="bank/cet6-2015-12-1.js"></script>
+  <script src="bank/cet6-2015-12-2.js"></script>
+  <script src="bank/cet6-2015-12-3.js"></script>
+  <script src="bank/cet6-2016-06-1.js"></script>
+  <script src="bank/cet6-2016-06-2.js"></script>
+  <script src="bank/cet6-2016-06-3.js"></script>
+  <script src="bank/cet6-2016-12-1.js"></script>
+  <script src="bank/cet6-2016-12-2.js"></script>
+  <script src="bank/cet6-2016-12-3.js"></script>
+  <script src="bank/cet6-2017-06-1.js"></script>
+  <script src="bank/cet6-2017-06-2.js"></script>
+  <script src="bank/cet6-2017-06-3.js"></script>
+  <script src="bank/cet6-2017-12-1.js"></script>
+  <script src="bank/cet6-2017-12-2.js"></script>
+  <script src="bank/cet6-2017-12-3.js"></script>
+  <script src="bank/cet6-2018-06-1.js"></script>
+  <script src="bank/cet6-2018-06-2.js"></script>
+  <script src="bank/cet6-2018-06-3.js"></script>
+  <script src="bank/cet6-2018-12-1.js"></script>
+  <script src="bank/cet6-2018-12-2.js"></script>
+  <script src="bank/cet6-2018-12-3.js"></script>
+  <script src="bank/cet6-2019-06-1.js"></script>
+  <script src="bank/cet6-2019-06-2.js"></script>
+  <script src="bank/cet6-2019-06-3.js"></script>
+  <script src="bank/cet6-2019-12-1.js"></script>
+  <script src="bank/cet6-2019-12-2.js"></script>
+  <script src="bank/cet6-2019-12-3.js"></script>
+  <script src="bank/cet6-2020-07-1.js"></script>
+  <script src="bank/cet6-2020-09-1.js"></script>
+  <script src="bank/cet6-2020-09-2.js"></script>
+  <script src="bank/cet6-2020-09-3.js"></script>
+  <script src="bank/cet6-2020-12-1.js"></script>
+  <script src="bank/cet6-2020-12-2.js"></script>
+  <script src="bank/cet6-2020-12-3.js"></script>
+  <script src="bank/cet6-2021-06-1.js"></script>
+  <script src="bank/cet6-2021-06-2.js"></script>
+  <script src="bank/cet6-2021-06-3.js"></script>
+  <script src="bank/cet6-2021-12-1.js"></script>
+  <script src="bank/cet6-2021-12-2.js"></script>
+  <script src="bank/cet6-2021-12-3.js"></script>
+  <script src="bank/cet6-2022-06-1.js"></script>
+  <script src="bank/cet6-2022-06-2.js"></script>
+  <script src="bank/cet6-2022-06-3.js"></script>
+  <script src="bank/cet6-2022-09-1.js"></script>
+  <script src="bank/cet6-2022-09-2.js"></script>
+  <script src="bank/cet6-2022-09-3.js"></script>
+  <script src="bank/cet6-2022-12-1.js"></script>
+  <script src="bank/cet6-2022-12-2.js"></script>
+  <script src="bank/cet6-2022-12-3.js"></script>
+  <script src="bank/cet6-2023-03-1.js"></script>
+  <script src="bank/cet6-2023-03-2.js"></script>
+  <script src="bank/cet6-2023-03-3.js"></script>
+  <script src="bank/cet6-2023-06-1.js"></script>
+  <script src="bank/cet6-2023-06-2.js"></script>
+  <script src="bank/cet6-2023-06-3.js"></script>
+  <script src="bank/cet6-2023-12-1.js"></script>
+  <script src="bank/cet6-2023-12-2.js"></script>
+  <script src="bank/cet6-2023-12-3.js"></script>
+  <script src="bank/cet6-2024-06-1.js"></script>
+  <script src="bank/cet6-2024-06-2.js"></script>
+  <script src="bank/cet6-2024-06-3.js"></script>
+  <script src="bank/cet6-2024-12-1.js"></script>
+  <script src="bank/cet6-2024-12-2.js"></script>
+  <script src="bank/cet6-2024-12-3.js"></script>
+  <script src="bank/cet6-2025-06-1.js"></script>
+  <script src="bank/cet6-2025-06-2.js"></script>
+  <script src="bank/cet6-2025-06-3.js"></script>
+  <script src="bank/cet6-2025-12-1.js"></script>
+  <script src="bank/cet6-2025-12-2.js"></script>
+  <script src="bank/cet6-2025-12-3.js"></script>
+  <script src="bank/cet6-2026-06-1.js"></script>
+  <script src="bank/cet6-2026-06-2.js"></script>
+  <script src="bank/cet6-2026-06-3.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = window.CET6Core, BANKS = window.CET6_BANKS || [];
+  var store = window.localStorage;
+  var state = C.loadState(store);
+  var today = C.todayStr();
+  var session = null; // {item, qids, idx, picked, results}
+
+  // ---------- 工具 ----------
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.className = 'toast show'; setTimeout(function () { t.className = 'toast'; }, 1800); }
+  function save() { C.saveState(store, state); }
+  function histToday() {
+    var h = state.history[today];
+    if (!h) { h = state.history[today] = { minutes: 0, done: false, floor: false, qCount: 0, right: 0 }; }
+    return h;
+  }
+  function addMinutes(min) { var h = histToday(); h.minutes += min; save(); }
+
+  // ---------- 今日清单 ----------
+  function ensurePlan() {
+    if (!state.plan || state.plan.date !== today) {
+      state.plan = C.genPlan(state, BANKS, today);
+      save();
+    }
+    return state.plan;
+  }
+  function itemMinutes(it) {
+    if (it.type === 'writing') return 15;
+    if (it.type === 'translation') return 12;
+    var per = C.TYPE_META[it.type] ? C.TYPE_META[it.type].minPerQ : 1;
+    return Math.round(per * (it.qids || []).length * 10) / 10;
+  }
+  function renderToday() {
+    var plan = ensurePlan();
+    var list = $('planList'); list.innerHTML = '';
+    var doneCount = 0, totalMin = 0, planMin = 0;
+    plan.items.forEach(function (it, i) {
+      planMin += itemMinutes(it);
+      if (it.done) doneCount++;
+      var meta = C.TYPE_META[it.type] || { zh: it.type };
+      var n = (it.qids || []).length;
+      var card = document.createElement('div');
+      card.className = 'card plan-item' + (it.done ? ' done' : '');
+      card.innerHTML =
+        '<div class="ic">' + (it.done ? '✓' : esc(meta.zh.slice(0, 1))) + '</div>' +
+        '<div class="bd"><b>' + esc(meta.group || meta.zh) + (it.extra ? '<span class="badge extra">加练</span>' : '') + '</b>' +
+        '<div class="muted">' + (n ? n + ' 题 · ' : '') + '预计 ' + itemMinutes(it) + ' 分钟</div>' +
+        '<div class="prog"><i style="width:' + (it.done ? 100 : 0) + '%"></i></div></div>' +
+        '<button class="btn small' + (it.done ? ' ghost' : '') + '">' + (it.done ? '已完成' : '开始') + '</button>';
+      card.querySelector('button').onclick = function () { startItem(it); };
+      list.appendChild(card);
+    });
+    var h = state.history[today];
+    totalMin = h ? h.minutes : 0;
+    $('planSummary').textContent = '今日清单 ' + doneCount + '/' + plan.items.length + ' 组';
+    $('todayMinutes').textContent = '已练 ' + totalMin + ' 分钟（清单预计 ' + Math.round(planMin) + ' 分钟）';
+    var streak = C.streak(state.history, today);
+    $('streakChip').textContent = '🔥 ' + streak + ' 天';
+    var hd = h && (h.done || h.floor);
+    $('todayStatus').textContent = hd
+      ? (h.floor ? '今天已用底线模式保住连击（' + h.minutes + ' 分钟）' : '今天已完成打卡 ✓（' + h.minutes + ' 分钟）')
+      : '完成全部清单组即自动打卡；实在没时间可用底线模式保连击。';
+    // 加练按钮
+    var ex = $('extraBtns'); ex.innerHTML = '';
+    ['listening', 'cloze', 'match', 'reading'].forEach(function (t) {
+      var b = document.createElement('button');
+      b.className = 'btn small ghost';
+      b.textContent = '+ ' + C.TYPE_META[t].zh;
+      b.onclick = function () {
+        var g = C.extraGroup(state, BANKS, today, t);
+        if (!g) { toast('该题型没有剩余题目了'); return; }
+        state.plan.items.push(g); save(); renderToday();
+        toast('已加入一组' + C.TYPE_META[t].zh + '加练');
+      };
+      ex.appendChild(b);
+    });
+  }
+
+  // ---------- 打卡写入 ----------
+  function finishItem(it) {
+    it.done = true;
+    var h = histToday();
+    h.minutes += itemMinutes(it);
+    save();
+    var plan = state.plan;
+    var allDone = plan.items.filter(function (x) { return !x.extra; }).every(function (x) { return x.done; });
+    if (allDone && !h.done) { h.done = true; save(); toast('🎉 今日清单全部完成，打卡成功！'); }
+    else toast('本组完成 +' + itemMinutes(it) + ' 分钟');
+    renderToday();
+  }
+
+  // ---------- 做题 ----------
+  function startItem(it) {
+    session = { item: it, qids: (it.qids || []).slice(), idx: 0, picked: null, revealed: false, wrongSession: !it.key && it.isWrong };
+    $('quiz').classList.add('show');
+    renderQuestion();
+  }
+  function quizExit() {
+    $('quiz').classList.remove('show');
+    session = null;
+    renderToday(); renderWrong(); renderStat();
+  }
+  function renderQuestion() {
+    var s = session, it = s.item;
+    var body = $('quizBody');
+    // 写作/翻译组
+    if (it.type === 'writing' || it.type === 'translation') {
+      var paper = paperForItem(it);
+      var wt = it.type === 'writing' ? paper.writing : paper.translation;
+      var label = it.type === 'writing' ? '写作' : '翻译（汉译英）';
+      $('quizProg').textContent = label;
+      var draft = (state.essays[it.type] && state.essays[it.type].text) || '';
+      body.innerHTML =
+        '<div class="card"><h3>' + label + '题面（' + esc(paper.id) + '）</h3>' +
+        '<div class="passage" style="max-height:none">' + esc(wt.prompt) + '</div></div>' +
+        '<textarea class="essay-ta" id="essayTa" placeholder="在这里打草稿（自动保存，可不写）">' + esc(draft) + '</textarea>' +
+        '<div class="actions" style="margin-top:12px">' +
+        '<button class="btn" id="essayDone">我写完了，本组打卡</button>' +
+        '<button class="btn ghost" id="essaySample">查看参考范文</button></div>' +
+        '<div class="sample" id="sampleBox">' + esc(wt.sample) + '</div>';
+      $('essayTa').oninput = function () {
+        state.essays[it.type] = { lastAt: today, text: this.value }; save();
+      };
+      $('essayDone').onclick = function () { finishItem(it); quizExit(); };
+      $('essaySample').onclick = function () { $('sampleBox').classList.toggle('show'); };
+      return;
+    }
+    // 普通题目
+    if (s.idx >= s.qids.length) { // 组内做完
+      if (it.isWrong) { toast('本轮错题重练完成'); quizExit(); }
+      else { finishItem(it); quizExit(); }
+      return;
+    }
+    var q = C.findQ(BANKS, s.qids[s.idx]);
+    var paper = C.findPaper(BANKS, q.id);
+    $('quizProg').textContent = '第 ' + (s.idx + 1) + '/' + s.qids.length + ' 题 · ' + (q.typeZh || '') + ' · ' + paper.id;
+    var html = '';
+
+    // 材料区
+    if (q.type === 'listening') {
+      html += '<div class="card linkline"><b>听力音频</b>：先点<a href="' + esc(paper.listeningUrl) + '" target="_blank" rel="noopener">打开在线听力页</a>（新标签页，可拖到手机上听），听完后回来作答。题号 ' + esc(String(q.qno)) + '。</div>';
+    } else if (q.type === 'cloze') {
+      html += renderClozePassage(paper, q);
+      html += '<div class="wordbank">' + (q.options || []).map(function (w) { return '<span>' + esc(w) + '</span>'; }).join('') + '</div>';
+    } else if (q.type === 'match') {
+      html += '<div class="passage collapsed" id="passBox"><b>' + esc(paper.matchIntro || '') + '</b>\n\n' +
+        (paper.matchParagraphs || []).map(function (p) { return '[' + p.label + '] ' + p.text; }).join('\n\n') + '</div>' +
+        '<div class="passage-toggle"><button id="passTg">展开全部 13 段 ▾</button></div>';
+    } else if (q.type === 'reading') {
+      var rp = (paper.readingPassages || {})[String(q.qno)] || '';
+      html += '<div class="passage collapsed" id="passBox">' + esc(rp) + '</div>' +
+        '<div class="passage-toggle"><button id="passTg">展开原文 ▾</button></div>';
+    }
+
+    // 题干与选项
+    html += '<div class="card"><b>' + (q.type === 'match' ? '' : 'Q' + esc(String(q.qno)) + '. ') + esc(q.stem) + '</b>';
+    if (q.type === 'match') {
+      html += '<div class="muted" style="margin:6px 0 10px">这条信息出现在哪个段落？</div>';
+      var letters = (paper.matchParagraphs || []).map(function (p) { return p.label; });
+      html += '<div style="display:flex;flex-wrap:wrap;gap:8px">' + letters.map(function (L) {
+        return '<button class="opt" style="width:auto" data-v="' + L + '">' + L + ' 段</button>';
+      }).join('') + '</div>';
+    } else if (q.type === 'cloze') {
+      html += '<div class="muted" style="margin:6px 0 10px">第 ' + esc(String(q.qno)) + ' 空应填哪个词？</div>';
+      html += (q.options || []).map(function (o, i) {
+        return '<button class="opt" data-v="' + String.fromCharCode(65 + i) + '">' + esc(o) + '</button>';
+      }).join('');
+    } else {
+      html += '<div style="margin-top:10px">' + (q.options || []).map(function (o, i) {
+        return '<button class="opt" data-v="' + String.fromCharCode(65 + i) + '">' + esc(o) + '</button>';
+      }).join('') + '</div>';
+    }
+    html += '<div class="actions" style="margin-top:12px"><button class="btn" id="submitBtn" disabled>提交答案</button></div>';
+    html += '<div id="analysisBox"></div></div>';
+    body.innerHTML = html;
+
+    // 折叠开关
+    var tg = $('passTg');
+    if (tg) tg.onclick = function () {
+      var pb = $('passBox'); pb.classList.toggle('collapsed');
+      tg.textContent = pb.classList.contains('collapsed') ? '展开 ▾' : '收起 ▴';
+    };
+
+    // 选项交互
+    var picked = null;
+    var btns = body.querySelectorAll('.opt');
+    Array.prototype.forEach.call(btns, function (b) {
+      b.onclick = function () {
+        if (session.revealed) return;
+        picked = b.getAttribute('data-v');
+        Array.prototype.forEach.call(btns, function (x) { x.classList.remove('sel'); });
+        b.classList.add('sel');
+        $('submitBtn').disabled = false;
+      };
+    });
+    $('submitBtn').onclick = function () {
+      if (!picked) return;
+      session.revealed = true;
+      var correct = C.judge(q, picked);
+      // 判题可视化
+      Array.prototype.forEach.call(btns, function (b) {
+        var v = b.getAttribute('data-v');
+        b.disabled = true;
+        if (v === q.answer) b.classList.add('right');
+        else if (v === picked) b.classList.add('wrongpick');
+      });
+      // 记录结果（papers + 错题本调度）
+      C.recordResult(state, q.id, correct, today);
+      var h = histToday(); h.qCount++; if (correct) h.right++;
+      save();
+      // 解析面板
+      var box = $('analysisBox');
+      var pts = (q.points || []).map(function (p) { return '<span class="pt">' + esc(p) + '</span>'; }).join('');
+      box.innerHTML = '<div class="analysis ' + (correct ? '' : 'bad') + '">' +
+        '<div class="verdict ' + (correct ? 'ok' : 'bad') + '">' + (correct ? '✓ 答对了' : '✗ 答错了，已加入错题本（遗忘曲线自动安排复习，连对 5 次出库）') + '</div>' +
+        (pts ? '<div style="margin-bottom:8px">' + pts + '</div>' : '') +
+        '<div class="body">' + esc(q.analysis) + '</div>' +
+        '<div class="actions" style="margin-top:12px"><button class="btn" id="nextBtn">' +
+        (s.idx + 1 >= s.qids.length ? '完成本组' : '下一题 →') + '</button></div></div>';
+      $('nextBtn').onclick = function () {
+        s.idx++; s.revealed = false;
+        renderQuestion();
+      };
+      $('submitBtn').style.display = 'none';
+    };
+  }
+  function renderClozePassage(paper, q) {
+    var txt = paper.clozePassage || '';
+    var groupQnos = session.qids.map(function (id) { return C.findQ(BANKS, id).qno; });
+    var html = '<div class="passage" id="passBox">' + esc(txt).replace(/(_{2,}|\s26\s*[-—_]*\s*)/, function (m) { return m; });
+    // 把空格编号高亮：passage 里通常以 "26"-"35" 数字留空。直接按数字标注
+    html = html.replace(/\b(2[6-9]|3[0-5])\b/g, function (m) {
+      var n = Number(m);
+      var inGroup = groupQnos.indexOf(n) >= 0;
+      var isCur = (n === Number(q.qno));
+      return '<span class="blank-mark' + (isCur ? ' focus' : '') + '">' + m + (isCur ? ' ←本题' : (inGroup ? '' : '')) + '</span>';
+    });
+    return html + '</div>';
+  }
+  function paperForItem(it) {
+    if (it.paperId) {
+      for (var i = 0; i < BANKS.length; i++) if (BANKS[i].id === it.paperId) return BANKS[i];
+    }
+    if (it.qids && it.qids.length) return C.findPaper(BANKS, it.qids[0]);
+    return BANKS[0];
+  }
+
+  // ---------- 底线模式 ----------
+  $('floorBtn').onclick = function () {
+    var h = histToday();
+    if (h.floor || h.done) { toast('今天已记录过打卡'); return; }
+    var m = prompt('今天实在没时间？记录几分钟（哪怕 5 分钟也算守住底线）：', '10');
+    if (m === null) return;
+    var min = Math.max(1, parseInt(m, 10) || 10);
+    h.floor = true; h.minutes += min; save();
+    toast('底线模式已记录 +' + min + ' 分钟，连击保住了 💪');
+    renderToday(); renderStat();
+  };
+
+  // ---------- 错题本（遗忘曲线智能调度）----------
+  function renderWrong() {
+    var due = C.reviewQueue(state, BANKS, today); // 智能排序：逾期越久、错次越多、记忆越弱越靠前
+    var all = C.allWrongIds(state);
+    var sum = C.wrongSummary(state, today);
+    var overTxt = sum.overdue ? '，其中逾期 ' + sum.overdue + ' 题（最久 ' + sum.maxOverdue + ' 天）' : '';
+    $('wrongSummary').textContent = '共 ' + sum.total + ' 题在库 · 今日到期 ' + sum.due + ' 题' + overTxt +
+      (sum.total ? ' · 平均复习间隔 ' + sum.avgIv + ' 天' : '');
+    var dl = $('dueList');
+    if (!due.length) {
+      dl.innerHTML = '<h3>今日到期重练</h3><div class="empty">暂无到期错题，安心练新题吧</div>';
+    } else {
+      var html = '<h3>今日到期重练（' + due.length + ' 题 · 已按薄弱程度排序）</h3>';
+      html += '<div class="actions" style="margin-top:8px"><button class="btn" id="wrongAllBtn">智能复习（优先最薄弱 ' + Math.min(due.length, 20) + ' 题）</button></div>';
+      html += due.map(function (id) { return wrongRow(id, true); }).join('');
+      dl.innerHTML = html;
+      $('wrongAllBtn').onclick = function () { startWrongSession(due.slice(0, 20)); };
+      bindWrongRows(dl, due);
+    }
+    var al = $('allWrongList');
+    if (!all.length) {
+      al.innerHTML = '<h3>未到期错题</h3><div class="empty">错题本还是空的，做错题后会自动进来</div>';
+    } else {
+      var rest = all.filter(function (id) { return due.indexOf(id) < 0; })
+        .sort(function (a, b) { return state.wrongbook[a].due < state.wrongbook[b].due ? -1 : 1; });
+      var html2 = '<h3>未到期错题（' + rest.length + '）· 距下次复习由近到远</h3>';
+      if (rest.length) { html2 += rest.map(function (id) { return wrongRow(id, false); }).join(''); bindWrongRows(al, rest); }
+      else html2 += '<div class="muted" style="margin-top:6px">全部错题均在上方到期区</div>';
+      al.innerHTML = html2;
+    }
+  }
+  function wrongRow(id, isDue) {
+    var q = C.findQ(BANKS, id); var wb = state.wrongbook[id];
+    if (!q) return '';
+    var od = C.dayDiff(wb.due, today); // >0 逾期天数，=0 今日到期，<0 距到期天数
+    var chipTxt = isDue ? (od > 0 ? '逾期 ' + od + ' 天' : '今日到期') : (Math.abs(od) <= 1 ? '明天复习' : Math.abs(od) + ' 天后复习');
+    return '<div class="wb-item" data-qid="' + esc(id) + '">' +
+      '<div class="meta"><div class="stem">' + esc(String(q.qno)) + '. ' + esc((q.stem || '(选词填空第' + q.qno + '空)').slice(0, 60)) + '</div>' +
+      esc(q.typeZh || '') + ' · ' + esc(C.findPaper(BANKS, id).id) + ' · 错 ' + wb.wrongCount + ' 次 · 下次到期 ' + wb.due + ' · 稳固度 ' + Math.round((wb.ease || 2.5) / 2.8 * 100) + '%</div>' +
+      '<span class="chip ' + (isDue ? 'due' : 'sched') + '">' + chipTxt + '</span>' +
+      '<button class="btn small">重练</button></div>';
+  }
+  function bindWrongRows(root, ids) {
+    Array.prototype.forEach.call(root.querySelectorAll('.wb-item'), function (row) {
+      row.querySelector('button').onclick = function () {
+        startWrongSession([row.getAttribute('data-qid')]);
+      };
+    });
+  }
+  function startWrongSession(ids) {
+    var byType = {};
+    ids.forEach(function (id) { var t = C.findQ(BANKS, id).type; (byType[t] = byType[t] || []).push(id); });
+    // 逐题型分组重练（同题按顺序过一遍）
+    var first = Object.keys(byType)[0];
+    var item = { key: 'wrong-review', type: first, qids: byType[first], done: false, minutes: 0, isWrong: true };
+    // 混合题型：把其余题型的也串进去，renderQuestion 按 q.type 渲染
+    Object.keys(byType).forEach(function (t) { if (t !== first) item.qids = item.qids.concat(byType[t]); });
+    startItem(item);
+    session.mixedWrong = ids;
+    // 重练完成时只提示，不写清单
+  }
+
+  // ---------- 统计 ----------
+  function renderStat() {
+    var h = state.history[today];
+    $('statSummary').textContent = '累计 ' + totalMinutes() + ' 分钟';
+    var hm = C.heatmap(state.history, today, 84);
+    $('heatmap').innerHTML = hm.map(function (d) {
+      var cls = 'i';
+      if (d.floor) cls += ' floor';
+      else if (d.minutes >= 40) cls += ' f3';
+      else if (d.minutes >= 20) cls += ' f2';
+      else if (d.done || d.minutes > 0) cls += ' f1';
+      return '<i class="' + cls + '" title="' + d.date + ' ' + d.minutes + '分钟' + (d.floor ? '（底线）' : '') + '"></i>';
+    }).join('');
+    var totalQ = 0, totalR = 0;
+    Object.keys(state.papers).forEach(function (id) { totalQ += state.papers[id].seen; totalR += state.papers[id].right; });
+    $('statGrid').innerHTML =
+      statCell('🔥 连击', C.streak(state.history, today) + ' 天') +
+      statCell('今日', (h ? h.minutes : 0) + ' 分钟') +
+      statCell('累计做题', totalQ + ' 题') +
+      statCell('总体正确率', totalQ ? Math.round(totalR / totalQ * 100) + '%' : '—');
+    var acc = C.accuracyByType(state);
+    var rows = '<tr><th>题型</th><th>做题数</th><th>正确数</th><th>正确率</th></tr>';
+    ['listening', 'cloze', 'match', 'reading'].forEach(function (t) {
+      var a = acc[t];
+      rows += '<tr><td>' + C.TYPE_META[t].zh + '</td><td>' + (a ? a.seen : 0) + '</td><td>' + (a ? a.right : 0) + '</td><td>' +
+        (a && a.seen ? Math.round(a.right / a.seen * 100) + '%' : '—') + '</td></tr>';
+    });
+    $('accTable').innerHTML = rows;
+  }
+  function statCell(k, v) { return '<div class="stat-cell"><div class="v">' + v + '</div><div class="k">' + k + '</div></div>'; }
+  function totalMinutes() {
+    var m = 0;
+    Object.keys(state.history).forEach(function (d) { m += state.history[d].minutes || 0; });
+    return m;
+  }
+
+  // ---------- 备份 ----------
+  $('exportBtn').onclick = function () {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'cet6-backup-' + today + '.json';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
+    toast('已导出，请保存到 D:\\CET6\\backup\\');
+  };
+  $('importBtn').onclick = function () { $('importFile').click(); };
+  $('importFile').onchange = function () {
+    var f = this.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var s = JSON.parse(r.result);
+        if (!s || !s.version || !s.history) throw new Error('bad');
+        state = s; save();
+        toast('导入成功，打卡记录已恢复');
+        renderAll();
+      } catch (e) { toast('导入失败：不是有效的备份文件'); }
+    };
+    r.readAsText(f);
+    this.value = '';
+  };
+  var TYPE_ZH = { listening: '听力', cloze: '选词填空', match: '匹配', reading: '阅读', writing: '写作', translation: '翻译' };
+  var SHARE_ZH = { listeningSharedWith: '听力', clozeSharedWith: '选词填空', matchSharedWith: '匹配', readingSharedWith: '仔细阅读' };
+  $('bankInfo').innerHTML = BANKS.map(function (b) {
+    var cnt = {};
+    b.questions.forEach(function (q) { cnt[q.type] = (cnt[q.type] || 0) + 1; });
+    var dist = Object.keys(cnt).map(function (t) { return (TYPE_ZH[t] || t) + cnt[t]; }).join(' · ');
+    var shared = Object.keys(SHARE_ZH).filter(function (k) { return b[k]; })
+      .map(function (k) { return SHARE_ZH[k] + '与 ' + esc(b[k]) + ' 共用'; }).join('，');
+    var extra = shared ? '，' + shared + '，未重复收录' : '';
+    var head = b.questions.length ? b.questions.length + ' 题（' + dist + ' · 写作/翻译各1' + extra + '）'
+      : '纯共用卷（客观题全共用：' + (shared || '见同考期第1套') + '，仅写作/翻译独立）';
+    return '<div>📦 ' + esc(b.id) + ' — ' + head + '</div>';
+  }).join('') + '<div class="muted" style="margin-top:6px">以后新增真题卷：把生成的 bank JS 放入 bank/ 目录，并在本文件末尾加一行 &lt;script src="..."&gt; 即可。</div>';
+
+  // ---------- 导航 ----------
+  Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (b) {
+    b.onclick = function () {
+      Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+      ['today', 'wrong', 'stat', 'backup'].forEach(function (p) {
+        $('page-' + p).style.display = (p === b.getAttribute('data-p')) ? '' : 'none';
+      });
+      if (b.getAttribute('data-p') === 'wrong') renderWrong();
+      if (b.getAttribute('data-p') === 'stat') renderStat();
+    };
+  });
+  $('quizBack').onclick = function () {
+    if (session && session.revealed) { toast('本题已判分；退出后可从清单继续本组'); }
+    quizExit();
+  };
+
+  function renderAll() {
+    renderToday(); renderWrong(); renderStat();
+  }
+  $('todayLabel').textContent = today;
+  renderAll();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch(function () {});
+}
+</script>
+</body>
+</html>
