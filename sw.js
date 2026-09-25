@@ -3,7 +3,7 @@
  * 题库 bank/*.js 缓存优先（内容极少变化，二次打开秒开）。
  * 更新应用时改下面的 VERSION 即可让所有客户端刷新缓存。
  */
-var VERSION = 'cet6-v11';
+var VERSION = 'cet6-v12';
 var SHELL = ['./', './index.html', './core.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function (e) {
