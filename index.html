@@ -312,6 +312,17 @@
   var C = window.CET6Core, BANKS = window.CET6_BANKS || [];
   var store = window.localStorage;
 
+  // 题库完整性检查：某个真题卷文件加载失败时不静默缺卷
+  if (!window.CET6_BANKS || CET6_BANKS.length < 76) {
+    (function () {
+      var got = (window.CET6_BANKS || []).length;
+      var d = document.createElement('div');
+      d.style.cssText = 'background:#fff1f0;border:1px solid #ffa39e;color:#a8071a;padding:8px 12px;font-size:13px';
+      d.textContent = '⚠️ 题库只加载了 ' + got + '/76 卷（网络波动），部分考期的卷子暂不可用。刷新页面重试；刷新后仍有此提示请清除浏览器缓存再打开。';
+      var first = document.body.firstChild;
+      document.body.insertBefore(d, first);
+    })();
+  }
   // ---------- 手机号登录（本地多账号：每号独立存档，数据只存本机）----------
   var USER_KEY = 'cet6_user';
   var user = store.getItem(USER_KEY) || '';
@@ -366,7 +377,10 @@
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function toast(msg) { var t = $('toast'); t.textContent = msg; t.className = 'toast show'; setTimeout(function () { t.className = 'toast'; }, 1800); }
-  function save() { C.saveState(store, state, STATE_KEY); }
+  function save() {
+    try { C.saveState(store, state, STATE_KEY); }
+    catch (e) { toast('⚠️ 保存失败：浏览器存储不可用（隐私/无痕模式或空间已满），本次进度可能无法保留，建议导出备份后换正常模式使用'); }
+  }
   function histToday() {
     var h = state.history[today];
     if (!h) { h = state.history[today] = { minutes: 0, done: false, floor: false, qCount: 0, right: 0 }; }
