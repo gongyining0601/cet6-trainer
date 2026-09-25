@@ -524,7 +524,8 @@
   function renderClozePassage(paper, q) {
     var txt = paper.clozePassage || '';
     var groupQnos = session.qids.map(function (id) { return C.findQ(BANKS, id).qno; });
-    var html = '<div class="passage" id="passBox">' + esc(txt).replace(/(_{2,}|\s26\s*[-—_]*\s*)/, function (m) { return m; });
+    // 整篇文章完整展示（不截断不内部滚动），文章全读完再作答
+    var html = '<div class="passage" style="max-height:none;overflow:visible" id="passBox">' + esc(txt).replace(/(_{2,}|\s26\s*[-—_]*\s*)/, function (m) { return m; });
     // 把空格编号高亮：passage 里通常以 "26"-"35" 数字留空。直接按数字标注
     html = html.replace(/\b(2[6-9]|3[0-5])\b/g, function (m) {
       var n = Number(m);

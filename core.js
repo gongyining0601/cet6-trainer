@@ -33,7 +33,7 @@
   // ---------- 题型 ----------
   CORE.TYPE_META = {
     listening: { zh: '听力', minPerQ: 1.4, group: '听力·每日一组' },
-    cloze:     { zh: '选词填空', minPerQ: 0.6, group: '选词填空·半篇文章' },
+    cloze:     { zh: '选词填空', minPerQ: 0.6, group: '选词填空·整篇文章' },
     match:     { zh: '信息匹配', minPerQ: 1.3, group: '信息匹配·每日三条' },
     reading:   { zh: '仔细阅读', minPerQ: 1.6, group: '仔细阅读·每日一篇' },
     writing:   { zh: '写作', minPerQ: 15, group: '写作·隔日一练' },
