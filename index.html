@@ -316,7 +316,8 @@
 
   // ---------- 今日清单 ----------
   function ensurePlan() {
-    if (!state.plan || state.plan.date !== today) {
+    // plan.v 缺失 = 旧版本生成的清单结构（如 P6 每日写译/最旧卷取题），必须丢弃重算
+    if (!state.plan || state.plan.date !== today || state.plan.v !== (C.PLAN_VERSION || 2)) {
       state.plan = C.genPlan(state, BANKS, today);
       save();
     }
@@ -633,6 +634,14 @@
     });
   }
   function startWrongSession(ids) {
+    // 做题顺序按（卷从近到远，卷内题号升序）排：同卷同材料相邻，
+    // 整组同屏渲染时材料/音频只出现一次；选题本身仍由「智能复习」按薄弱优先决定
+    ids = ids.slice().sort(function (a, b) {
+      var pa = C.findPaper(BANKS, a), pb = C.findPaper(BANKS, b);
+      if (!pa || !pb) return 0;
+      if (pa.id !== pb.id) return pa.id < pb.id ? 1 : -1;
+      return C.findQ(BANKS, a).qno - C.findQ(BANKS, b).qno;
+    });
     var byType = {};
     ids.forEach(function (id) { var t = C.findQ(BANKS, id).type; (byType[t] = byType[t] || []).push(id); });
     // 混合题型组：renderGroup 会按题型/材料自动分段渲染

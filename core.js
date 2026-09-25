@@ -44,6 +44,7 @@
   CORE.PLAN_TARGET = 25;
   CORE.PLAN_CAP = 40;
   CORE.REVIEW_CAP = 10;
+  CORE.PLAN_VERSION = 2; // 清单结构版本：低于此版本的旧版 plan 会被 ensurePlan 丢弃重算
 
   // ---------- 题库索引 ----------
   CORE.allQuestions = function (banks) {
@@ -228,21 +229,23 @@
       });
       items.push({ key: 'review-' + g.type + '-' + g.paperId, type: g.type, qids: g.qids, paperId: g.paperId, label: '错题复习·' + CORE.TYPE_META[g.type].zh + ' ' + g.qids.length + '题', done: false, minutes: 0, review: true });
     });
-    // 2) 周六写译一篇（占当日额度）
+    // 2) 周六写译一篇（占当日额度；选卷与新题推进同卷——最近考期优先的第一个未完成单元所在卷）
     var target = CORE.PLAN_TARGET, cap = CORE.PLAN_CAP;
     var dParts = dateStr.split('-').map(Number);
     var dow = new Date(dParts[0], dParts[1] - 1, dParts[2]).getDay();
+    var units = CORE.unitList(banks);
     if (dow === 6) {
       var weekIdx = Math.floor(CORE.dayDiff('2020-01-04', dateStr) / 7); // 2020-01-04 为周六锚点
       var wtype = weekIdx % 2 === 0 ? 'writing' : 'translation';
-      var papers = CORE.paperOrder(banks);
-      var wp = papers[(weekIdx % papers.length + papers.length) % papers.length];
+      var wp = CORE.paperOrder(banks)[0];
+      for (var wi = 0; wi < units.length; wi++) {
+        if (!units[wi].qids.every(function (id) { return state.papers[id]; })) { wp = { id: units[wi].paperId }; break; }
+      }
       items.push({ key: 'essay-' + dateStr, type: wtype, qids: [], paperId: wp.id, done: false, minutes: 0 });
       var wmin = wtype === 'writing' ? 15 : 12;
       target -= wmin; cap -= wmin;
     }
     // 3) 新题完整单元装包（最近考期优先，已做完的整单元跳过）
-    var units = CORE.unitList(banks);
     var acc = 0, i = 0;
     while (acc < target && i < units.length) {
       var u = units[i++];
@@ -254,7 +257,7 @@
       u.qids.forEach(function (id) { planIds[id] = 1; });
       acc += u.min;
     }
-    return { date: dateStr, items: items };
+    return { date: dateStr, v: CORE.PLAN_VERSION, items: items };
   };
   function C_findQno(banks, qid) {
     var q = CORE.findQ(banks, qid);
