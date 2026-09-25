@@ -150,7 +150,7 @@
         <span class="muted" id="todayStatus"></span>
       </div>
       <div class="actions">
-        <button class="btn warn" id="floorBtn">⏰ 忙日打卡（再忙 1 分钟也算坚持）</button>
+        <button class="btn warn" id="floorBtn">⏰ 每天坚持一下，让习惯不断线</button>
       </div>
     </div>
   </section>
@@ -417,7 +417,7 @@
     var hd = h && (h.done || h.floor);
     $('todayStatus').textContent = hd
       ? (h.floor ? '今日忙日打卡（' + h.minutes + ' 分钟）——再忙也没断，这份坚持最值钱 💪' : '今日已通关 ✓（' + h.minutes + ' 分钟），连击 +1')
-      : '做完今天的清单自动打卡；再忙也可以点下面的忙日打卡，每天 1 分钟，习惯不断线。';
+      : '完成今天的任务点击下方记录';
     // 加练按钮
     var ex = $('extraBtns'); ex.innerHTML = '';
     ['listening', 'cloze', 'match', 'reading'].forEach(function (t) {
