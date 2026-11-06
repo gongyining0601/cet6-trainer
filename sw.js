@@ -1,26 +1,65 @@
 /* CET6 打卡应用 Service Worker
  * 策略：外壳（index/core/manifest/图标）网络优先、离线兜底缓存；
  * 题库 bank/*.js 缓存优先（内容极少变化，二次打开秒开）。
- * 更新应用时改下面的 VERSION 即可让所有客户端刷新缓存。
+ * 版本号单点化：VERSION 来自 version.js（importScripts），与 index.html 的 core.js?v= 同源，
+ * 改 version.js 一处即全端刷新缓存。
+ * 缓存节奏（修复弱网 install 全败）：install 只原子预缓存小体积外壳（≈0.2MB，6 张写作题图
+ * 不预缓存——按需走 bank 缓存策略，用到哪卷缓存哪张），
+ * 76 卷题库（≈8.6MB）在 activate 后分批后台预热，单卷失败不拖累安装；
+ * 预热完成前做题路径本来就有"缓存未命中→网络→写缓存"的兜底。
  */
-var VERSION = 'cet6-v16';
-var SHELL = ['./', './index.html', './core.js', './manifest.json', './icon-192.png', './icon-512.png'];
+try { importScripts('./version.js'); } catch (e) { }
+var VERSION = self.CET6_VERSION || 'cet6-v32';
+var SHELL = ['./', './index.html', './version.js', './core.js?v=' + encodeURIComponent(VERSION), './manifest.json', './icon-192.png', './icon-512.png', './bank/meta.js', './bank/listeningMeta.js', './sync-config.js', './sync.js'];
+/* 卷清单来自 meta.js（顶层 IIFE 挂到 self.CET6_META）：activate 后分批后台预热。
+   meta.js 缺失时退化为只缓存外壳（页面会由 index.html 的 meta 完整性检查给出错误提示）。 */
+try { importScripts('./bank/meta.js'); } catch (e) { }
+var M = self.CET6_META;
+var BANK_URLS = (M && Array.isArray(M.order))
+  ? M.order.map(function (id) { return './bank/cet6-' + id + '.js'; })
+  : [];
 
 self.addEventListener('install', function (e) {
+  // 只原子缓存外壳：体积小、弱网也能一次成功；失败才整体重试
   e.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
 });
 
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
     return Promise.all(keys.filter(function (k) { return k !== VERSION; }).map(function (k) { return caches.delete(k); }));
-  }).then(function () { return self.clients.claim(); }));
+  }).then(function () { return self.clients.claim(); }).then(function () { warmBankCache(); }));
 });
+
+// 后台分批预热题库（每批 8 个并发）：弱网下个别失败只影响该卷，做题时仍会现取现缓存
+function warmBankCache() {
+  if (!BANK_URLS.length) return;
+  caches.open(VERSION).then(function (c) {
+    var i = 0;
+    function nextBatch() {
+      var batch = [];
+      for (var j = 0; j < 8 && i < BANK_URLS.length; j++, i++) {
+        (function (u) {
+          batch.push(c.match(u).then(function (hit) {
+            return hit ? null : c.add(u).catch(function () { });
+          }));
+        })(BANK_URLS[i]);
+      }
+      if (!batch.length) return Promise.resolve();
+      return Promise.all(batch).then(nextBatch);
+    }
+    return nextBatch();
+  });
+}
 
 self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
   var isBank = url.pathname.indexOf('/bank/') >= 0;
-  if (isBank) {
+  // meta.js / listeningMeta.js 是「卷清单 + 听力篇边界」的索引，不是卷正文：
+  // 改走网络优先、离线回退 SHELL 预缓存。这样即使有人忘了递增 version.js，
+  // 线上老用户联网打开也能自愈看到新卷，不会静默停留在旧骨架。
+  var isMetaIndex = /\/bank\/(meta|listeningMeta)\.js$/.test(url.pathname);
+  if (isBank && !isMetaIndex) {
     // 题库：缓存优先，未命中再取网络并写入缓存
     e.respondWith(caches.open(VERSION).then(function (c) {
       return c.match(e.request).then(function (hit) {

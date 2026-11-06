@@ -7,52 +7,77 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="六级打卡">
+<!-- CSP（安全加固）：静态 meta 形式，对 https 与 file:// 两种协议同时生效。
+     本应用脚本来就内联，故 script-src / style-src 保留 'unsafe-inline'；
+     CSP 的价值在于禁 object / base / form 注入、限制 iframe 与连接来源。 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https:; frame-src https://*.lazynote.cn https://lazynote.cn; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>CET6 每日打卡 · 真题练习</title>
 <style>
   :root {
-    --bg:#f5f6f8; --card:#fff; --ink:#1c2333; --sub:#6b7280; --line:#e5e7eb;
-    --brand:#2f5af5; --ok:#16a34a; --bad:#dc2626; --warn:#d97706;
+    --bg:#f5f6f8; --card:#fff; --ink:#1c2333; --sub:#5b6472; --line:#e5e7eb;
+    --brand:#2f5af5; --brand-ink:#2f5af5; --ok:#16a34a; --bad:#dc2626; --warn:#d97706;
+    --c1:#eef2f7; --c2:#eef2ff; --c3:#dcfce7; --c4:#fef2f2; --c5:#fff3e0; --c6:#fef08a;
+    --c7:#fff7e6; --c8:#fdf2f8; --c9:#fef3c7; --c10:#fee2e2; --c11:#e0e7ff; --c12:#eef0f3;
+    --c13:#f0fdf4; --c14:#fff1f0; --c15:#be185d; --c16:#b45309; --c17:#4338ca; --c18:#874d00;
+    --toast:#1c2333; --hl:#fff3b0;
     --r:12px;
   }
+  body.dark {
+    --bg:#0f172a; --card:#1e293b; --ink:#e2e8f0; --sub:#94a3b8; --line:#334155;
+    /* N-UI-1：品牌色当"文字色"用在深底上时改走亮蓝变体（nav 激活项 2.72:1 → 8.0:1） */
+    --brand-ink:#93c5fd;
+    --c1:#273244; --c2:#1e3a5f; --c3:#14532d; --c4:#450a0a; --c5:#422006; --c6:#42300d;
+    --c7:#3b2f0e; --c8:#4a1d3a; --c9:#3a2c0a; --c10:#4c1d1d; --c11:#1e2f5a; --c12:#2a3346;
+    --c13:#123524; --c14:#3f1d1b; --c15:#f9a8d4; --c16:#fcd34d; --c17:#a5b4fc; --c18:#fbbf24;
+    --toast:#334155; --hl:#5b4a15;
+  }
   * { box-sizing:border-box; margin:0; padding:0; }
+  /* N-UI-1：<button> 不会继承 body 的 color（UA 默认 color:buttontext≈黑），
+     深色模式下"黑字压深蓝底"就是这么来的。统一兜底继承，各按钮自己的显式 color 优先级更高。 */
+  button { color:inherit; }
   body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--ink); font-size:15px; line-height:1.65; }
   #app { max-width:760px; margin:0 auto; padding:14px 14px 90px; }
   #loginMask { position:fixed; inset:0; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; z-index:99; }
-  #loginMask .box { background:#fff; border-radius:14px; padding:22px 18px; width:86%; max-width:340px; }
+  #loginMask .box { background:var(--card); border-radius:14px; padding:22px 18px; width:86%; max-width:340px; }
   #loginMask h3 { margin:0 0 6px; }
-  #loginMask input { width:100%; box-sizing:border-box; padding:10px; margin:10px 0; border:1px solid #d6dbe3; border-radius:8px; font-size:16px; }
-  .user-chip { font-size:12px; color:var(--sub); background:#eef2f7; border-radius:10px; padding:2px 10px; cursor:pointer; }
+  #loginMask input { width:100%; box-sizing:border-box; padding:10px; margin:10px 0; border:1px solid var(--line); border-radius:8px; font-size:16px; color:inherit; background:var(--card); }
+  .user-chip { font-size:12px; color:var(--sub); background:var(--c1); border-radius:10px; padding:2px 10px; cursor:pointer; }
+  #themeBtn { background:none; border:none; font-size:15px; cursor:pointer; padding:2px 6px; }
   header { display:flex; justify-content:space-between; align-items:baseline; padding:6px 2px 12px; }
   header h1 { font-size:19px; }
   header .date { color:var(--sub); font-size:13px; }
-  .streak-chip { display:inline-block; background:#fff3e0; color:var(--warn); border-radius:999px; padding:2px 10px; font-size:13px; font-weight:600; margin-left:8px; }
+  .streak-chip { display:inline-block; background:var(--c5); color:#8a4b06; border-radius:999px; padding:2px 10px; font-size:13px; font-weight:600; margin-left:8px; }
 
   nav { position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--line); display:flex; z-index:50; }
   nav button { flex:1; padding:11px 0 13px; background:none; border:none; font-size:13px; color:var(--sub); cursor:pointer; }
-  nav button.on { color:var(--brand); font-weight:700; }
+  nav button.on { color:var(--brand-ink); font-weight:700; }
 
   .card { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; margin-bottom:12px; }
   .card h3 { font-size:15px; margin-bottom:6px; }
   .row { display:flex; justify-content:space-between; align-items:center; gap:10px; }
   .muted { color:var(--sub); font-size:13px; }
   .btn { background:var(--brand); color:#fff; border:none; border-radius:9px; padding:9px 16px; font-size:14px; cursor:pointer; }
-  .btn:disabled { background:#c3c8d4; cursor:not-allowed; }
-  .btn.ghost { background:#fff; color:var(--brand); border:1px solid var(--brand); }
+  .btn:disabled { background:var(--c12); color:var(--sub); cursor:not-allowed; }
+  /* N-UI-1：ghost 按钮原来是"白底 + 品牌蓝字"，深色模式下白底刺眼且蓝字只有 3.8:1；
+     换成 --card/--brand-ink 后浅色模式外观完全不变（两者浅色下就等于 #fff / --brand），深色下 6.9:1。 */
+  .btn.ghost { background:var(--card); color:var(--brand-ink); border:1px solid var(--brand-ink); }
   .btn.small { padding:5px 12px; font-size:13px; }
-  .btn.ok { background:var(--ok); } .btn.warn { background:var(--warn); }
+  .btn.ok { background:#15803d; } .btn.warn { background:#b45309; }
+  /* N-UI-1：上面两个实心按钮原本直接用 --ok/--warn 当底色，白字对比度只有 3.19 / 3.34:1；
+     换成同色系更深一档（白字 5.0:1），不影响 --ok/--warn 作为"文字色"的既有用法。 */
 
   .plan-item { display:flex; align-items:center; gap:12px; }
-  .plan-item .ic { width:40px; height:40px; border-radius:10px; background:#eef2ff; color:var(--brand); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; flex:none; }
+  .plan-item .ic { width:40px; height:40px; border-radius:10px; background:var(--c2); color:var(--brand); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; flex:none; }
   .plan-item .bd { flex:1; min-width:0; }
-  .plan-item.done .ic { background:#dcfce7; color:var(--ok); }
-  .prog { height:5px; background:#eef0f3; border-radius:3px; margin-top:5px; overflow:hidden; }
+  .plan-item.done .ic { background:var(--c3); color:var(--ok); }
+  .prog { height:5px; background:var(--c12); border-radius:3px; margin-top:5px; overflow:hidden; }
   .prog i { display:block; height:100%; background:var(--brand); }
   .badge { font-size:12px; border-radius:6px; padding:1px 7px; margin-left:6px; }
-  .badge.extra { background:#fdf2f8; color:#be185d; }
-  .badge.review { background:#fef3c7; color:#b45309; }
+  .badge.extra { background:var(--c8); color:var(--c15); }
+  .badge.review { background:var(--c9); color:var(--c16); }
 
   .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
   .bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
@@ -68,27 +93,53 @@
   .passage { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; margin-bottom:12px; font-size:14px; white-space:pre-wrap; max-height:340px; overflow-y:auto; }
   .passage.collapsed { max-height:120px; overflow:hidden; position:relative; }
   .passage-toggle { text-align:center; margin:-6px 0 12px; }
-  .passage-toggle button { background:none; border:none; color:var(--brand); cursor:pointer; font-size:13px; padding:4px 10px; }
-  .blank-mark { background:#fef08a; border-radius:3px; padding:0 3px; font-weight:700; }
+  .passage-toggle button { background:none; border:none; color:var(--brand-ink); cursor:pointer; font-size:13px; padding:4px 10px; }
+  .blank-mark { background:var(--c6); border-radius:3px; padding:0 3px; font-weight:700; }
   .blank-mark.focus { background:var(--brand); color:#fff; }
-  .opt { display:block; width:100%; text-align:left; background:var(--card); border:1.5px solid var(--line); border-radius:10px; padding:10px 14px; margin-bottom:8px; font-size:14.5px; cursor:pointer; line-height:1.5; }
-  .opt.sel { border-color:var(--brand); background:#eef2ff; }
-  .opt.right { border-color:var(--ok); background:#f0fdf4; }
-  .opt.wrongpick { border-color:var(--bad); background:#fef2f2; }
+  .opt { display:block; width:100%; text-align:left; background:var(--card); border:1.5px solid var(--line); border-radius:10px; padding:10px 14px; margin-bottom:8px; font-size:14.5px; cursor:pointer; line-height:1.5; color:var(--ink); }
+  /* .opt.sel / .opt.right / .opt.wrongpick 只换背景不设 color，一律继承上面的 var(--ink)：
+     深色实测 9.3 / 10.9 / 13.1 : 1，均 ≥ 4.5（原来的黑字是 1.44:1） */
+  .opt.sel { border-color:var(--brand); background:var(--c2); }
+  .opt.right { border-color:var(--ok); background:var(--c13); }
+  .opt.wrongpick { border-color:var(--bad); background:var(--c4); }
   .opt:disabled { cursor:default; }
   .wordbank { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
   .wordbank span { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 10px; font-size:13.5px; }
+  /* R5-选词方案2：词库点选填空。词库是可点的词块，空格是可点的填空位。 */
+  .wb-chip { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 9px; font-size:13px; cursor:pointer; color:inherit; }
+  .wb-chip:hover { border-color:var(--brand); background:var(--c2); }
+  .wb-chip:disabled { cursor:default; opacity:.55; }
+  .cloze-slot { display:inline-block; min-width:96px; max-width:100%; text-align:center; background:var(--c6); border:1.5px dashed var(--warn); border-radius:7px; padding:1px 6px; font-weight:700; font-size:13.5px; cursor:pointer; color:inherit; }
+  .cloze-slot:hover { border-color:var(--brand); }
+  .cloze-slot.focus { background:var(--brand); border-color:var(--brand); color:#fff; }
+  .cloze-slot.right { background:var(--c13); border-color:var(--ok); color:var(--ink); cursor:default; }
+  .cloze-slot.wrongpick { background:var(--c4); border-color:var(--bad); color:var(--ink); cursor:default; }
+  /* R5 听力方案A：原生播放器 */
+  .listen-player { margin-top:10px; }
+  .listen-player audio { width:100%; }
+  .listen-strip { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; align-items:center; }
+  .listen-strip button { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 10px; font-size:12.5px; cursor:pointer; color:inherit; }
+  .listen-strip button:hover { border-color:var(--brand); }
+  .listen-strip button.cur { border-color:var(--brand); background:var(--c2); font-weight:700; }
+  .lp-auto { display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--sub); margin-left:4px; cursor:pointer; }
+  mark.hl { background:var(--hl); border-radius:3px; padding:0 1px; cursor:pointer; }
+  .hl-bar { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin:-4px 0 12px; font-size:12.5px; color:var(--sub); }
+  .hl-bar button { background:none; border:none; color:var(--brand-ink); cursor:pointer; font-size:12.5px; padding:2px 8px; }
   .analysis { background:var(--card); border-left:4px solid var(--ok); border-radius:8px; padding:12px 14px; margin-top:12px; font-size:14px; }
   .analysis.bad { border-left-color:var(--bad); }
-  .analysis .pt { display:inline-block; background:#eef2ff; color:var(--brand); border-radius:6px; padding:1px 8px; font-size:12.5px; margin:0 6px 6px 0; }
+  .analysis .pt { display:inline-block; background:var(--c2); color:var(--brand-ink); border-radius:6px; padding:1px 8px; font-size:12.5px; margin:0 6px 6px 0; }
   .analysis .body { white-space:pre-wrap; }
   .verdict { font-weight:700; font-size:15px; margin-bottom:8px; }
   .verdict.ok { color:var(--ok); } .verdict.bad { color:var(--bad); }
-  .essay-ta { width:100%; min-height:180px; border:1.5px solid var(--line); border-radius:10px; padding:12px; font-size:14.5px; font-family:inherit; resize:vertical; }
+  .essay-ta { width:100%; min-height:180px; border:1.5px solid var(--line); border-radius:10px; padding:12px; font-size:14.5px; font-family:inherit; resize:vertical; color:inherit; background:var(--card); }
   .sample { background:var(--card); border:1px dashed var(--line); border-radius:10px; padding:12px 14px; margin-top:12px; font-size:14px; white-space:pre-wrap; display:none; }
   .sample.show { display:block; }
   .linkline { margin-bottom:12px; }
   .linkline a { color:var(--brand); }
+  /* 考场限时（P2） */
+  .qtimer { color:var(--sub); font-size:12px; font-weight:700; letter-spacing:.5px; white-space:nowrap; }
+  .qtimer.overtime { color:var(--bad); animation:qt-blink 1s infinite; }
+  @keyframes qt-blink { 50% { opacity:.35; } }
 
   /* 错题本 */
   .wb-item { display:flex; align-items:center; gap:10px; padding:10px 2px; border-bottom:1px solid var(--line); }
@@ -96,12 +147,12 @@
   .wb-item .meta { flex:1; min-width:0; font-size:13px; color:var(--sub); }
   .wb-item .stem { color:var(--ink); font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .chip { font-size:12px; border-radius:6px; padding:1px 8px; flex:none; }
-  .chip.due { background:#fee2e2; color:var(--bad); }
-  .chip.sched { background:#e0e7ff; color:#4338ca; }
+  .chip.due { background:var(--c10); color:var(--bad); }
+  .chip.sched { background:var(--c11); color:var(--c17); }
 
   /* 统计 */
   .heat { display:flex; flex-wrap:wrap; gap:3px; margin-top:8px; }
-  .heat i { width:18px; height:18px; border-radius:4px; background:#ebedf0; font-style:normal; }
+  .heat i { width:18px; height:18px; border-radius:4px; background:var(--c12); font-style:normal; }
   .heat i.on { font-size:10px; line-height:18px; text-align:center; color:#fff; font-weight:600; }
   .heat i.f2 { background:#7cc0ff; } .heat i.f3 { background:#2f5af5; }
   .heat i.st1 { background:#9ecbff; } .heat i.st2 { background:#5c9df7; }
@@ -115,16 +166,62 @@
   .tips { font-size:13px; color:var(--sub); }
   .tips li { margin:6px 0 6px 18px; }
   #importFile { display:none; }
-  .toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#1c2333; color:#fff; border-radius:999px; padding:8px 20px; font-size:13.5px; z-index:300; opacity:0; transition:opacity .25s; pointer-events:none; }
+  .toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--toast); color:#fff; border-radius:999px; padding:8px 20px; font-size:13.5px; z-index:300; opacity:0; transition:opacity .25s; pointer-events:none; }
   .toast.show { opacity:.95; }
   .empty { text-align:center; color:var(--sub); padding:26px 0; }
+
+  /* ============ 第三轮修复：P1-a 深色模式对比度 / P2-a 触控目标 ============
+     实测工具 scripts/_r3_contrast_probe.js（浅/深两套主题各扫一遍，列出全部 <4.5:1 的文字元素）
+     与 scripts/test_round3_interaction.js 的 E 段。括号内为"修改前 → 修改后"实测对比度。
+
+     P1-a：下面这些组件的底色是硬编码的（不跟主题变量走），深浅两套主题都会命中，
+     所以两类规则一起给：浅色主题修文字色，深色主题再压深底色。 */
+
+  /* 热力格里的"连击第几天"数字。浅底 st1(#9ecbff) / st2(#5c9df7) 配白字只有 1.69 / 2.76:1，
+     改成深字后 9.30 / 5.70:1，格子底色不动。忙日格的琥珀渐变同样吃白字 1.67:1 → 深字 8.53:1
+     （渐变两主题一致，不必分主题）。f3 本来就是深蓝底，白字 5.38:1 达标，保持不动。 */
+  .heat i.st1, .heat i.st2 { color:#1c2333; }
+  .heat i.floor { color:#3a2503; }
+  /* 深色模式下上面那两个浅蓝底依旧生效（白字 1.69 / 2.76:1），换成同色系更深的三档 + 白字：
+     st1 #2563eb 5.17:1、st2 #1d4ed8 6.70:1、f3 #1e40af 8.72:1。 */
+  body.dark .heat i.st1 { background:#2563eb; color:#fff; }
+  body.dark .heat i.st2 { background:#1d4ed8; color:#fff; }
+  body.dark .heat i.f3 { background:#1e40af; color:#fff; }
+
+  /* 到期徽标 .chip.due：--bad(#dc2626) 压 --c10 底色 —— 深色 2.90:1 / 浅色 3.95:1 → 7.37 / 5.30:1 */
+  .chip.due { color:#b91c1c; }
+  body.dark .chip.due { color:#fca5a5; }
+
+  /* 判分结论 .verdict：答对 --ok(#16a34a) 深色 4.44:1、浅色 3.30:1 → 8.39 / 5.02:1；
+     答错 --bad 深色 3.03:1 → 5.29:1（浅色 4.83:1 本来达标） */
+  .verdict.ok { color:#15803d; }
+  body.dark .verdict.ok { color:#4ade80; }
+  body.dark .verdict.bad { color:#f87171; }
+
+  /* 计划条目左侧题型图标：深色下 --brand 压 --c2 只有 2.14:1 → 亮蓝 6.38:1；
+     已完成格的 ✓ 用 --ok 压 --c3，深色 2.77:1、浅色 3.00:1 → 5.23 / 4.57:1 */
+  .plan-item.done .ic { color:#15803d; }
+  body.dark .plan-item .ic { color:var(--brand-ink); }
+  body.dark .plan-item.done .ic { color:#4ade80; }
+
+  /* P2-a：可点目标 ≥44px（WCAG 2.5.5 建议的最小触控尺寸）。只抬高度、不动宽度与横向 padding，
+     所以换行与"元素不重叠"都不受影响。 */
+  .btn, .btn.small { min-height:44px; }
+  nav button { min-height:44px; }
+  #themeBtn { min-height:44px; }
+  .opt { min-height:44px; }
+  .qtop .back { min-height:44px; }
+  .hl-bar button { min-height:44px; }
+  .passage-toggle button { min-height:44px; }
 </style>
 </head>
 <body>
 <div id="app">
+  <!-- 存储写满/被浏览器拦截时的常驻警告条（M-5/M-6）：由 save() 失败或存储不可用时点亮 -->
+  <div id="saveWarn" style="display:none;position:sticky;top:0;background:#fff1f0;color:#a8071a;padding:8px 16px;font-size:13px;z-index:100"></div>
   <header>
     <h1>CET6 每日打卡<span class="streak-chip" id="streakChip">🔥 0 天</span></h1>
-    <span class="user-chip" id="userChip"></span>
+    <span style="display:flex;align-items:center;gap:8px"><button id="themeBtn" title="切换深色/浅色模式">🌙</button><span class="user-chip" id="userChip"></span></span>
     <span class="date" id="todayLabel"></span>
   </header>
 
@@ -149,7 +246,7 @@
       <div class="row" style="margin-top:6px">
         <span class="muted" id="todayStatus"></span>
       </div>
-      <div id="backupHint" style="display:none;margin-top:6px;padding:8px 10px;background:#fff7e6;border:1px solid #fadb14;border-radius:8px;font-size:12px;color:#874d00"></div>
+      <div id="backupHint" style="display:none;margin-top:6px;padding:8px 10px;background:var(--c7);border:1px solid var(--c6);border-radius:8px;font-size:12px;color:var(--c18)"></div>
       <div class="actions">
         <button class="btn warn" id="floorBtn">⏰ 每天坚持一下，让习惯不断线</button>
       </div>
@@ -187,20 +284,30 @@
     <div class="bar"><b>备份与迁移</b></div>
     <div class="card">
       <h3>打卡数据在这里</h3>
-      <p class="tips" style="margin-top:4px">全部记录保存在<strong>本浏览器的本地存储</strong>里，不上传任何服务器。清浏览器数据、换电脑/手机前，请先导出。</p>
+      <p class="tips" style="margin-top:4px">工作副本保存在<strong>本浏览器的本地存储</strong>里。未启用同步时不联网；启用后会经私有端点在多台设备间合并，清浏览器数据也能恢复，详见下方状态卡片。</p>
       <div class="actions">
         <button class="btn" id="exportBtn">导出备份 JSON</button>
+        <button class="btn" id="wrongCsvBtn">导出错题本 CSV</button>
         <button class="btn ghost" id="importBtn">导入备份</button>
         <input type="file" id="importFile" accept=".json">
       </div>
+      <p class="tips" style="margin-top:6px">错题 CSV 含题号/卷/题型/题干/你的答案/正确答案/考点/错次/下次复习，可用 Excel 打开，方便做自己的复盘表。</p>
     </div>
     <div class="card">
       <h3>建议节奏</h3>
       <ul class="tips">
-        <li>每周日导出一次，保存到 <b>D:\CET6\backup\</b></li>
-        <li>换设备：旧设备导出 → 新设备打开本页导入即可无缝衔接</li>
-        <li>文件名形如 cet6-backup-日期.json，留好别删</li>
+        <li>未启用同步：导出的文件先落在浏览器「下载」目录，请另存到安全位置；换设备或清理浏览器数据前导一次即可</li>
+        <li>已启用同步：记录自动合并到私有端点，仍建议偶尔导出一份留底</li>
+        <li>换设备：端点与命名空间配置相同时自动恢复；未启用同步则走「导出 → 导入」</li>
       </ul>
+    </div>
+    <div class="card">
+      <h3>跨设备同步</h3>
+      <div id="syncStatus" class="tips">读取中…</div>
+      <div class="actions" style="margin-top:8px">
+        <button class="btn ghost" id="syncNowBtn">立即同步</button>
+      </div>
+      <p class="tips" style="margin-top:6px">记录按 4 位学习编号、按项目（cet4 / cet6）分开保存。启用同步后手机与电脑会自动合并，清理浏览器数据也能从私有端点恢复。未配置端点时这里显示「未启用」，记录仍只存本机。</p>
     </div>
     <div class="card">
       <h3>当前题库</h3>
@@ -221,7 +328,7 @@
   <div class="quiz-wrap">
     <div class="qtop">
       <button class="back" id="quizBack">← 退出</button>
-      <span class="qprog" id="quizProg"></span>
+      <span style="display:flex;align-items:center;gap:8px"><span class="qtimer" id="quizTimer"></span><span class="qprog" id="quizProg"></span></span>
     </div>
     <div id="quizBody"></div>
   </div>
@@ -229,127 +336,183 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="core.js"></script>
-  <script src="bank/cet6-2015-06-1.js"></script>
-  <script src="bank/cet6-2015-06-2.js"></script>
-  <script src="bank/cet6-2015-06-3.js"></script>
-  <script src="bank/cet6-2015-12-1.js"></script>
-  <script src="bank/cet6-2015-12-2.js"></script>
-  <script src="bank/cet6-2015-12-3.js"></script>
-  <script src="bank/cet6-2016-06-1.js"></script>
-  <script src="bank/cet6-2016-06-2.js"></script>
-  <script src="bank/cet6-2016-06-3.js"></script>
-  <script src="bank/cet6-2016-12-1.js"></script>
-  <script src="bank/cet6-2016-12-2.js"></script>
-  <script src="bank/cet6-2016-12-3.js"></script>
-  <script src="bank/cet6-2017-06-1.js"></script>
-  <script src="bank/cet6-2017-06-2.js"></script>
-  <script src="bank/cet6-2017-06-3.js"></script>
-  <script src="bank/cet6-2017-12-1.js"></script>
-  <script src="bank/cet6-2017-12-2.js"></script>
-  <script src="bank/cet6-2017-12-3.js"></script>
-  <script src="bank/cet6-2018-06-1.js"></script>
-  <script src="bank/cet6-2018-06-2.js"></script>
-  <script src="bank/cet6-2018-06-3.js"></script>
-  <script src="bank/cet6-2018-12-1.js"></script>
-  <script src="bank/cet6-2018-12-2.js"></script>
-  <script src="bank/cet6-2018-12-3.js"></script>
-  <script src="bank/cet6-2019-06-1.js"></script>
-  <script src="bank/cet6-2019-06-2.js"></script>
-  <script src="bank/cet6-2019-06-3.js"></script>
-  <script src="bank/cet6-2019-12-1.js"></script>
-  <script src="bank/cet6-2019-12-2.js"></script>
-  <script src="bank/cet6-2019-12-3.js"></script>
-  <script src="bank/cet6-2020-07-1.js"></script>
-  <script src="bank/cet6-2020-09-1.js"></script>
-  <script src="bank/cet6-2020-09-2.js"></script>
-  <script src="bank/cet6-2020-09-3.js"></script>
-  <script src="bank/cet6-2020-12-1.js"></script>
-  <script src="bank/cet6-2020-12-2.js"></script>
-  <script src="bank/cet6-2020-12-3.js"></script>
-  <script src="bank/cet6-2021-06-1.js"></script>
-  <script src="bank/cet6-2021-06-2.js"></script>
-  <script src="bank/cet6-2021-06-3.js"></script>
-  <script src="bank/cet6-2021-12-1.js"></script>
-  <script src="bank/cet6-2021-12-2.js"></script>
-  <script src="bank/cet6-2021-12-3.js"></script>
-  <script src="bank/cet6-2022-06-1.js"></script>
-  <script src="bank/cet6-2022-06-2.js"></script>
-  <script src="bank/cet6-2022-06-3.js"></script>
-  <script src="bank/cet6-2022-09-1.js"></script>
-  <script src="bank/cet6-2022-09-2.js"></script>
-  <script src="bank/cet6-2022-09-3.js"></script>
-  <script src="bank/cet6-2022-12-1.js"></script>
-  <script src="bank/cet6-2022-12-2.js"></script>
-  <script src="bank/cet6-2022-12-3.js"></script>
-  <script src="bank/cet6-2023-03-1.js"></script>
-  <script src="bank/cet6-2023-03-2.js"></script>
-  <script src="bank/cet6-2023-03-3.js"></script>
-  <script src="bank/cet6-2023-06-1.js"></script>
-  <script src="bank/cet6-2023-06-2.js"></script>
-  <script src="bank/cet6-2023-06-3.js"></script>
-  <script src="bank/cet6-2023-12-1.js"></script>
-  <script src="bank/cet6-2023-12-2.js"></script>
-  <script src="bank/cet6-2023-12-3.js"></script>
-  <script src="bank/cet6-2024-06-1.js"></script>
-  <script src="bank/cet6-2024-06-2.js"></script>
-  <script src="bank/cet6-2024-06-3.js"></script>
-  <script src="bank/cet6-2024-12-1.js"></script>
-  <script src="bank/cet6-2024-12-2.js"></script>
-  <script src="bank/cet6-2024-12-3.js"></script>
-  <script src="bank/cet6-2025-06-1.js"></script>
-  <script src="bank/cet6-2025-06-2.js"></script>
-  <script src="bank/cet6-2025-06-3.js"></script>
-  <script src="bank/cet6-2025-12-1.js"></script>
-  <script src="bank/cet6-2025-12-2.js"></script>
-  <script src="bank/cet6-2025-12-3.js"></script>
-  <script src="bank/cet6-2026-06-1.js"></script>
-  <script src="bank/cet6-2026-06-2.js"></script>
-  <script src="bank/cet6-2026-06-3.js"></script>
+<script src="version.js"></script>
+<script>document.write('<script src="core.js?v=' + encodeURIComponent(window.CET6_VERSION || 'cet6-v32') + '"><\/script>');</script>
+<!-- 私有同步层：与 CET4 共用同一份 app/sync.js；sync-config.js 未填端点时整层不激活 -->
+<script src="sync-config.js"></script>
+<script src="sync.js"></script>
+  <!-- 按需加载（架构级）：首屏只带元数据骨架（meta.js 440KB ≈ 全量的 1/20），做题/加练时动态加载对应卷（见 ensurePapers） -->
+  <script src="bank/meta.js"></script>
+  <script src="bank/listeningMeta.js"></script>
 <script>
 (function () {
   'use strict';
-  var C = window.CET6Core, BANKS = window.CET6_BANKS || [];
-  var store = window.localStorage;
+  window.CET6_BANKS = window.CET6_BANKS || []; // 按需加载：先初始化数组对象，动态加载的卷 push 进来，BANKS 变量与其共享同一引用
+  var C = window.CET6Core, BANKS = window.CET6_BANKS, META = window.CET6_META || null;
+  // M-6：localStorage 被禁用（隐私模式/站点数据被拦/iframe 限制）时不再让整页脚本抛错白屏，
+  // 退回一份内存兜底 store，保证本次会话可用，并明确告知用户"这次的数据不落盘"。
+  var store = null;
+  var storeDisabled = false; // true = 浏览器根本不给存储（隐私模式/被拦），此时 save() 走内存兜底不会失败
+  try { store = window.localStorage; store.getItem('__probe__'); } catch (e) { store = null; }
+  if (!store) {
+    storeDisabled = true;
+    // 内存兜底对象（N-SEC-2：getItem 用 hasOwnProperty 判定，别再让 ''/0 这类合法值被 `||` 读成"不存在"）
+    store = { _d:{},
+      getItem:function(k){return Object.prototype.hasOwnProperty.call(this._d,k) ? this._d[k] : null;},
+      setItem:function(k,v){this._d[k]=String(v);},
+      removeItem:function(k){delete this._d[k];} };
+    // 延迟提示（等 DOM 就绪）
+    setTimeout(function(){ showSaveWarn('⚠️ 浏览器禁止本地存储（隐私模式/站点数据被拦），本次使用不会保存，请换普通窗口'); }, 500);
+  }
+  // 读写都包一层：写满/被拦时不抛到事件回调外面（M-5）
+  function storeGet(k) { try { return store.getItem(k); } catch (e) { return null; } }
+  // N-SEC-2：写入后立刻读回校验——"写了但没落盘"的存储实现也能被识别为失败，
+  // 调用方（登录/切换用户）才能据此走内存兜底分支，而不是永远拿到 true。
+  function storeSet(k, v) {
+    try {
+      store.setItem(k, v);
+      var back = store.getItem(k);
+      return back === v || (back != null && String(back) === String(v));
+    } catch (e) { return false; }
+  }
 
-  // 题库完整性检查：某个真题卷文件加载失败时不静默缺卷
-  if (!window.CET6_BANKS || CET6_BANKS.length < 76) {
+  // 题库元数据完整性检查（按需加载）：meta 骨架缺失 = 资源文件加载失败，不让页面带病运行。
+  // 卷正文不再随首屏加载（76 卷 → 1 卷 meta），做题时才动态拉取（ensurePapers）。
+  var metaComplete = !!window.CET6_META && Array.isArray(window.CET6_META.order) && window.CET6_META.order.length >= 76;
+  var META_KNOWN = null;
+  if (metaComplete) {
+    META_KNOWN = {};
+    Object.keys(window.CET6_META.papers || {}).forEach(function (pid) {
+      var p = window.CET6_META.papers[pid];
+      (p && Array.isArray(p.qLite) ? p.qLite : []).forEach(function (q) { if (q && q.id) META_KNOWN[q.id] = 1; });
+    });
+  } else {
     (function () {
-      var got = (window.CET6_BANKS || []).length;
       var d = document.createElement('div');
       d.style.cssText = 'background:#fff1f0;border:1px solid #ffa39e;color:#a8071a;padding:8px 12px;font-size:13px';
-      d.textContent = '⚠️ 题库只加载了 ' + got + '/76 卷（网络波动），部分考期的卷子暂不可用。刷新页面重试；刷新后仍有此提示请清除浏览器缓存再打开。';
+      d.textContent = '⚠️ 题库元数据加载失败（bank/meta.js 缺失或损坏），页面功能不可用。请刷新重试；仍出现请清除浏览器缓存。';
       var first = document.body.firstChild;
       document.body.insertBefore(d, first);
     })();
   }
-  // ---------- 手机号登录（本地多账号：每号独立存档，数据只存本机）----------
+  // ---------- 学习编号登录（本地多账号：4 位编号各自独立存档，数据只存本机）----------
   var USER_KEY = 'cet6_user';
-  var user = store.getItem(USER_KEY) || '';
+  var user = storeGet(USER_KEY) || '';
   function maskPhone(ph) { return ph || ''; } // 4 位学习编号，无需脱敏
-  if (!/^\d{4}$/.test(user)) { showLogin(); return; } // 未登录：只出登录层，不初始化应用
-  var STATE_KEY = C.stateKey(user);
-  // 单账号时代旧数据迁移：本机默认 key 有数据且该手机号还没有存档 → 归到当前手机号名下
-  if (!store.getItem(STATE_KEY) && store.getItem(C.STORAGE_KEY)) {
-    store.setItem(STATE_KEY, store.getItem(C.STORAGE_KEY));
-    store.removeItem(C.STORAGE_KEY);
+  // 单账号时代旧数据迁移（N-SEC-6）：遗留 key 只允许"认领一次"。
+  // 当前编号已经有自己的存档时，遗留 key 已无归属，直接删掉——否则下一个登录的新编号会因为
+  // "自己没有存档"而继承上一个人的记录；任何编号都不该读到别的账号的 state key。
+  function claimLegacy(ph) {
+    var k = C.stateKey(ph);
+    var legacy = storeGet(C.STORAGE_KEY);
+    if (legacy) {
+      if (!storeGet(k)) {
+        if (storeSet(k, legacy)) { try { store.removeItem(C.STORAGE_KEY); } catch (e) { } }
+      } else {
+        try { store.removeItem(C.STORAGE_KEY); } catch (e) { } // 已归属本机某个编号：留下只会污染下一个编号
+      }
+    }
+    return k;
   }
-  var state = C.loadState(store, STATE_KEY);
+  // 幽灵 qid 清理（M-3）：旧备份/跨版本题库里残留、当前题库已不存在的题号，
+  // 会让错题本与 CSV 导出取到 null 而崩。按需加载下用 meta 骨架判定（meta 含全部 qid），
+  // 只有 meta 就绪才清理，避免把"暂时没加载的错题"误删；plan 里的幽灵 qid 与空组一并处理。
+  function pruneGhosts(st) {
+    if (!metaComplete) return st;
+    var known = META_KNOWN;
+    Object.keys(st.wrongbook || {}).forEach(function (qid) {
+      if (!st.wrongbook[qid] || !known[qid]) delete st.wrongbook[qid];
+    });
+    if (st.plan && Array.isArray(st.plan.items)) {
+      st.plan.items.forEach(function (it) {
+        if (!it || !Array.isArray(it.qids)) return;
+        it.qids = it.qids.filter(function (id) { return known[id]; });
+      });
+      // 过滤后无题可做的组删除（与 core.normalizeState 同口径；写译组 qids 本来就为空，保留）
+      st.plan.items = st.plan.items.filter(function (it) {
+        return !!it && (((it.qids && it.qids.length) || it.type === 'writing' || it.type === 'translation'));
+      });
+    }
+    return st;
+  }
+  // 拿到学习编号后的唯一初始化入口：首次载入 / 内存兜底模式下的原地登录 / 切换用户都走这里。
+  // N-SEC-2：存储被浏览器拦掉时 storeDisabled=true，此时绝不能再 location.reload()——
+  // reload 会把内存兜底的 store 清空，用户就陷入"点了【开始学习】什么也没发生"的死循环。
+  function startSession(ph) {
+    user = ph;
+    STATE_KEY = claimLegacy(ph);
+    // state 一律经 normalizeState 清洗（H-1）+ 幽灵 qid 清理（M-3/ N-SEC-3）：
+    // 传入题库让 core 同时清掉 plan.items[].qids 里的幽灵题号（与 pruneGhosts 同口径）
+    state = pruneGhosts(C.loadState(store, STATE_KEY, null)); // 幽灵清理统一由 pruneGhosts（meta 版）承担
+    // 坏档隔离提示：存档损坏已被 core 备份到隔离键、并从空状态重新开始——旧记录没丢，可人工恢复
+    if (C.lastCorruptBackup) {
+      var _bk = C.lastCorruptBackup;
+      setTimeout(function () {
+        alert('检测到本机存档损坏（可能是浏览器数据异常）。\n旧记录已自动隔离备份（内部键名 ' + _bk + '），没有丢失；现已从空记录重新开始。\n如需找回旧记录，请勿清理浏览器数据，并联系维护者从隔离备份恢复。');
+      }, 300);
+    }
+    // P2-b（第三轮）：加载路径（core.normalizeState）会把单段超过 50 处的高亮静默截断——
+    // 交互路径 saveHl 有 toast，恢复路径以前没有。这里把 core 记下的截断量接过来提示。
+    hlTruncated = (C.hlTruncatedOnLoad && C.hlTruncatedOnLoad.total) ? C.hlTruncatedOnLoad : { total: 0, pids: {} };
+    // 把清洗结果立刻落盘（N-SEC-3/N-SEC-6）：否则会出现"界面已经干净、存档里还留着幽灵 qid / 遗留 key"，
+    // 而落盘时机全看用户后面碰巧做了什么操作。
+    save();
+    today = C.todayStr();
+    session = null; // {item, qids, draft, submitted, rightCount}
+    var mask = document.getElementById('loginMask');
+    if (mask && mask.parentNode) mask.parentNode.removeChild(mask);
+    var lbl = $('todayLabel');
+    if (lbl) lbl.textContent = today;
+    bindTheme();
+    bindUserChip();
+    renderAll();
+    // 私有同步：本地先渲染（离线可刷），远端副本回来后字段级合并再重渲染。
+    // 清过浏览器数据或换新设备时，这一步把端点记录回填到空的 localStorage。
+    if (window.CET_SYNC) {
+      CET_SYNC.init({
+        userId: ph,
+        getState: function () { return state; },
+        applyState: function (merged) {
+          state = pruneGhosts(C.normalizeState(merged, null));
+          try { C.saveState(store, state, STATE_KEY); } catch (e) { } // 直接落盘，绕开 save() 避免推送回环
+          renderAll();
+        },
+        onStatus: renderSyncStatus
+      });
+    } else {
+      renderSyncStatus({ state: 'off', message: '未加载同步模块，记录仅存本机', lastAt: 0 });
+    }
+    // P2-b：本次载入被截断过高亮就明说一次（toast 非阻塞，不拦任何操作）；
+    // 具体是哪一段被截断，会在那一段自己的高亮工具条下面再标一次（见 hlBar）。
+    if (hlTruncated.total > 0) {
+      toast('🖍 有 ' + hlTruncated.total + ' 处高亮超过单段上限 ' + HL_MAX + ' 处，已按顺序保留最靠前的部分');
+    }
+  }
+  // N-SEC-2：未登录不再 `return` 跳过初始化——绑定类语句必须照常执行，
+  // 否则内存兜底模式下"原地登录"拿到的是一堆没绑事件的按钮（开始学习点不动）。渲染交给 startSession。
+  var STATE_KEY = '';
+  var state = C.newState();
   var today = C.todayStr();
-  var session = null; // {item, qids, draft, submitted, rightCount}
+  var session = null;
+  var currentClozeQno = null; // R5-选词方案2：当前被点选的选词空格（词库点词填充目标）
+  // P2-b：本次载入被 core 截断掉的高亮处数 { total, pids }；非持久化，只描述"这次载入发生了什么"
+  var hlTruncated = { total: 0, pids: {} };
 
   function showLogin() {
     var mask = document.createElement('div');
     mask.id = 'loginMask';
     mask.innerHTML = '<div class="box"><h3>📱 输入你的学习编号</h3>' +
-      '<div class="muted">每人一个 4 位数字编号（比如 1001、2026），各自的练习记录分开保存。数据只存在你这台设备的浏览器里，不上传、不联网。</div>' +
+      '<div class="muted">每人一个 4 位数字编号（比如 1001、2026），各自的练习记录分开保存。未启用同步时记录只存本机；启用后经私有端点在多台设备间合并。</div>' +
+      '<div class="muted" style="margin-top:8px;color:var(--warn);font-size:12px">⚠️ 4 位编号只有 1 万种组合，共用同一设备时请选一个别人没用过的编号（比如自己学号后 4 位），否则可能看到他人的记录。</div>' +
       '<input id="phoneInput" inputmode="numeric" maxlength="4" placeholder="输入 4 位数字编号" style="text-align:center;font-size:20px;letter-spacing:8px">' +
       '<button class="btn" id="loginBtn" style="width:100%">开始学习</button></div>';
     document.body.appendChild(mask);
     document.getElementById('loginBtn').onclick = function () {
       var ph = (document.getElementById('phoneInput').value || '').trim();
       if (!/^\d{4}$/.test(ph)) { alert('请输入 4 位数字编号'); return; }
-      store.setItem(USER_KEY, ph);
+      if (!storeSet(USER_KEY, ph)) { alert('这台浏览器不允许保存数据（隐私模式或空间已满），必须换普通窗口才能保存记录'); return; }
+      // N-SEC-2：内存兜底模式下原地进入，不能 reload（reload 会把兜底数据与登录态一起清空，点了没反应）
+      if (storeDisabled) { startSession(ph); toast('本窗口禁止本地存储，已直接开始；刷新后请重新输入编号'); return; }
       location.reload();
     };
     document.getElementById('phoneInput').addEventListener('keydown', function (e) {
@@ -357,9 +520,24 @@
     });
   }
 
+  // P4 深色/浅色模式：body.dark 类切换，偏好持久化到 localStorage（按学习编号共享同一主题偏好）
+  function bindTheme() {
+    var btn = $('themeBtn');
+    if (!btn) return;
+    var dark = storeGet('cet6_theme') === '1';
+    document.body.classList.toggle('dark', dark);
+    btn.textContent = dark ? '☀️' : '🌙';
+    btn.onclick = function () {
+      var d = !document.body.classList.contains('dark');
+      document.body.classList.toggle('dark', d);
+      storeSet('cet6_theme', d ? '1' : '0'); // 存储写不进去也不影响本次主题切换
+      btn.textContent = d ? '☀️' : '🌙';
+      toast(d ? '已切换到深色模式' : '已切换到浅色模式');
+    };
+  }
+
   // 顶栏账号：点击切换用户（多人共用一台设备时）
-  function bindUserChip() {
-    var chip = document.getElementById('userChip');
+  function bindUserChip() {    var chip = document.getElementById('userChip');
     if (!chip) return;
     chip.textContent = '👤 ' + maskPhone(user);
     chip.title = '点击切换用户';
@@ -368,22 +546,63 @@
       if (ph === null) return;
       ph = ph.trim();
       if (!/^\d{4}$/.test(ph)) { alert('编号格式不对（要 4 位数字），没切换'); return; }
-      store.setItem(USER_KEY, ph);
+      if (!storeSet(USER_KEY, ph)) { alert('这台浏览器不允许保存数据（隐私模式或空间已满），没切换'); return; }
+      if (storeDisabled) { startSession(ph); toast('已切换到 ' + maskPhone(ph) + '（本窗口禁止本地存储，刷新后请重新输入）'); return; } // N-SEC-2
       location.reload();
     };
   }
 
   // ---------- 工具 ----------
   function $(id) { return document.getElementById(id); }
-  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  // 去除题库选项自带的字母前缀（如 "A) Lack of money." → "Lack of money."），防止与前端自动添加的 A/B/C/D 重复
+  function stripOptionPrefix(s) { return String(s).replace(/^[A-Z]\)\s*/, ''); }
   function toast(msg) { var t = $('toast'); t.textContent = msg; t.className = 'toast show'; setTimeout(function () { t.className = 'toast'; }, 1800); }
+  // M-5：存储写满（QuotaExceededError）时不能只在 toast 里飘一下就被后面的成功提示盖掉，
+  // 改成"首次失败提示 + 常驻横幅"，并且把成败返回给调用方，让完成提示说实话。
+  var saveFailed = false;
+  var essaySaveTimer = null, essayLastSave = 0; // S1：作文保存防抖/兜底
+  // S1-补：卸载/切后台时强制落盘待发的写译草稿。
+  // 防抖 300ms 与 1s 兜底都假设"用户还会继续输入"，但真实场景是写完最后一段
+  // 立刻刷新、关标签页或切后台——最后几段还挂在定时器里，一丢就是几百字
+  // （2026-11-05 全量回归 C9/D2 复现：连打 25 段后立即刷新，最多丢 999 字）。
+  // pagehide（刷新/关闭/跳转都触发）+ visibilitychange(hidden)（移动端切后台）
+  // 双保险同步冲刷；重复触发时定时器已清空，天然幂等。
+  function flushEssaySave() {
+    if (!essaySaveTimer) return;
+    clearTimeout(essaySaveTimer);
+    essaySaveTimer = null;
+    try { save(); essayLastSave = Date.now(); } catch (e) { }
+  }
+  document.addEventListener('pagehide', flushEssaySave);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') flushEssaySave();
+  });
+  function showSaveWarn(msg) {
+    var b = $('saveWarn');
+    if (!b) return;
+    b.style.display = 'block';
+    b.textContent = msg;
+  }
   function save() {
     try { C.saveState(store, state, STATE_KEY); }
-    catch (e) { toast('⚠️ 保存失败：浏览器存储不可用（隐私/无痕模式或空间已满），本次进度可能无法保留，建议导出备份后换正常模式使用'); }
+    catch (e) {
+      if (!saveFailed) {
+        saveFailed = true;
+        toast('⚠️ 保存失败：浏览器存储不可用（隐私/无痕模式或空间已满），本次进度可能无法保留，建议导出备份后换正常模式使用');
+      }
+      showSaveWarn('⚠️ 保存失败：本机存储写不进去（空间已满或被浏览器拦截），之后的打卡进度不会保留。请先到「备份」页导出 JSON，再清理浏览器数据或换普通窗口继续。');
+      return false;
+    }
+    saveFailed = false;
+    if (!storeDisabled) { var w = $('saveWarn'); if (w) { w.style.display = 'none'; w.textContent = ''; } } // 写通了就撤掉横幅
+    // 本机写盘成功后节流推送一份权威副本；未配置端点时是空操作
+    if (window.CET_SYNC) { try { CET_SYNC.schedulePush(); } catch (e) { } }
+    return true;
   }
   function histToday() {
     var h = state.history[today];
-    if (!h) { h = state.history[today] = { minutes: 0, done: false, floor: false, qCount: 0, right: 0 }; }
+    if (!h) { h = state.history[today] = { minutes: 0, done: false, floor: false, qCount: 0, right: 0, timed: 0, timedWithin: 0, timedSec: 0 }; }
     return h;
   }
   function addMinutes(min) { var h = histToday(); h.minutes += min; save(); }
@@ -391,8 +610,12 @@
   // ---------- 今日清单 ----------
   function ensurePlan() {
     // plan.v 缺失 = 旧版本生成的清单结构（如 P6 每日写译/最旧卷取题），必须丢弃重算
-    if (!state.plan || state.plan.date !== today || state.plan.v !== (C.PLAN_VERSION || 2)) {
-      state.plan = C.genPlan(state, BANKS, today);
+    // plan.items 不是数组（脏存档/手改备份）同样重算，避免后面 forEach 直接崩（M-2）
+    if (!state.plan || typeof state.plan !== 'object' || !Array.isArray(state.plan.items) ||
+        state.plan.date !== today || state.plan.v !== (C.PLAN_VERSION || 2)) {
+      // 按需加载：清单生成只用元数据骨架（units/qLite 已固化在 meta.js），与卷正文加载状态无关
+      state.plan = META ? C.genPlan(state, META, today)
+        : { date: today, v: (C.PLAN_VERSION || 2), items: [] };
       save();
     }
     return state.plan;
@@ -405,6 +628,8 @@
   }
   function renderToday() {
     var plan = ensurePlan();
+    // N-UI-4：题库做满（或清单被全部过滤掉）时不再留一块空白——给通关提示，加练入口照常给
+    if (!plan.items.length) { renderEmptyToday(); return; }
     var list = $('planList'); list.innerHTML = '';
     var doneCount = 0, totalMin = 0, planMin = 0;
     plan.items.forEach(function (it, i) {
@@ -433,31 +658,63 @@
     $('todayStatus').textContent = hd
       ? (h.floor ? '今日忙日打卡（' + h.minutes + ' 分钟）——再忙也没断，这份坚持最值钱 💪' : '今日已通关 ✓（' + h.minutes + ' 分钟），连击 +1')
       : '完成今天的任务点击下方记录';
-    // 备份提醒：有 5 天以上记录且从未备份，或距上次备份超过 7 天
+    renderBackupHint();
+    bindExtraButtons();
+  }
+  // N-UI-4：清单为 0 组（题库已通关）时的今日页。除了清单空态，其余状态卡/加练入口必须照常渲染，
+  // 否则 #extraBtns 会停在上一次渲染的内容上，变成新的"点了没反应"。
+  function renderEmptyToday() {
+    var h = state.history[today];
+    $('planList').innerHTML = '<div class="card"><div class="empty">🎉 全部题目已完成！可在错题本复习或加练</div></div>';
+    $('planSummary').textContent = '今日清单 0/0 组 · 题库已通关';
+    $('todayMinutes').textContent = '已练 ' + (h ? h.minutes : 0) + ' 分钟';
+    $('streakChip').textContent = '🔥 ' + C.streak(state.history, today) + ' 天';
+    var hd = h && (h.done || h.floor);
+    $('todayStatus').textContent = hd
+      ? (h.floor ? '今日忙日打卡（' + h.minutes + ' 分钟）——再忙也没断，这份坚持最值钱 💪' : '今日已通关 ✓（' + h.minutes + ' 分钟），连击 +1')
+      : '题库已经练完，去错题本复习，或用下方加练保持手感';
+    renderBackupHint();
+    bindExtraButtons();
+  }
+  // 备份提醒：有 5 天以上记录且从未备份，或距上次备份超过 7 天（renderToday / renderEmptyToday 共用）
+  function renderBackupHint() {
     var bh = $('backupHint');
-    if (bh) {
-      var days = Object.keys(state.history || {}).length;
-      var last = state.lastBackup || '';
-      var overdue = last ? Math.round((new Date(today) - new Date(last)) / 86400000) : -1;
-      if (days >= 5 && (last === '' || overdue > 7)) {
-        bh.style.display = 'block';
-        bh.innerHTML = '💾 你的练习记录已积累 ' + days + ' 天。数据只存在本机浏览器里，建议去「备份」页导出一份留底' +
-          (last ? '（上次备份已是 ' + overdue + ' 天前）' : '') + '——' +
-          '<a href="#" id="backupHintGo" style="color:#d48806;font-weight:bold">现在就去 →</a>';
-        var go = $('backupHintGo');
-        if (go) go.onclick = function (e) { e.preventDefault(); showPage('backup'); };
-      } else { bh.style.display = 'none'; }
-    }
-    // 加练按钮
-    var ex = $('extraBtns'); ex.innerHTML = '';
+    if (!bh) return;
+    var days = Object.keys(state.history || {}).length;
+    var last = state.lastBackup || '';
+    var overdue = last ? Math.round((new Date(today) - new Date(last)) / 86400000) : -1;
+    if (days >= 5 && (last === '' || overdue > 7)) {
+      bh.style.display = 'block';
+      bh.innerHTML = '💾 你的练习记录已积累 ' + days + ' 天。数据只存在本机浏览器里，建议去「备份」页导出一份留底' +
+        (last ? '（上次备份已是 ' + overdue + ' 天前）' : '') + '——' +
+        '<a href="#" id="backupHintGo" style="color:var(--warn);font-weight:bold">现在就去 →</a>';
+      var go = $('backupHintGo');
+      // N-EXTRA-1：原来这里调用了并不存在的 showPage()，点「现在就去 →」只会抛 ReferenceError、页面不切换；
+      // 改成复用导航按钮自己的切换逻辑，行为与点底部「备份」页签一致。
+      if (go) go.onclick = function (e) {
+        e.preventDefault();
+        var nb = document.querySelector('nav button[data-p="backup"]');
+        if (nb) nb.click();
+      };
+    } else { bh.style.display = 'none'; }
+  }
+  // 加练按钮（今日页公共尾部；清单为空时也要在）
+  function bindExtraButtons() {
+    var ex = $('extraBtns'); if (!ex) return;
+    ex.innerHTML = '';
     ['listening', 'cloze', 'match', 'reading'].forEach(function (t) {
       var b = document.createElement('button');
       b.className = 'btn small ghost';
       b.textContent = '+ ' + C.TYPE_META[t].zh;
       b.onclick = function () {
-        var g = C.extraGroup(state, BANKS, today, t);
+        var g = C.extraGroup(state, META, today, t); // 按需加载：加练抽题只用 meta 骨架
         if (!g) { toast('该题型没有剩余题目了'); return; }
-        state.plan.items.push(g); save(); renderToday();
+        state.plan.items.push(g);
+        save();
+        renderToday();
+        // N-SEC-5：save() 的返回值原来被直接丢掉，落盘失败也照样说"已加入"。
+        // 这里不回滚 push（回滚会把上面 save() 已经弹出的失败提示覆盖掉），只把话说实。
+        if (saveFailed) { toast('⚠️ 加练已加入本次页面，但没写进本机存储，刷新会丢，请先到「备份」页导出 JSON'); return; }
         toast('已加入一组' + C.TYPE_META[t].zh + '加练');
       };
       ex.appendChild(b);
@@ -466,28 +723,194 @@
 
   // ---------- 打卡写入 ----------
   function finishItem(it) {
+    // N-UI-2：幂等守卫。连点「完成，返回今日」时，上一次回调还卡在 renderToday 重建 DOM 的那一拍上，
+    // 下一次点击又进来了，分钟数就被重复计入（实测连点 3 次 0→16.8）。done 挡已完成的，_finishing 挡同步重入的。
+    if (!it || it.done || it._finishing) return;
+    it._finishing = true;
     it.done = true;
     var h = histToday();
     h.minutes += itemMinutes(it);
-    save();
+    var saved = save();
     var plan = state.plan;
     var allDone = plan.items.filter(function (x) { return !x.extra; }).every(function (x) { return x.done; });
-    if (allDone && !h.done) { h.done = true; save(); toast('🎉 今日清单全部完成，打卡成功！'); }
-    else toast('本组完成 +' + itemMinutes(it) + ' 分钟');
+    if (allDone && !h.done) {
+      h.done = true;
+      saved = save();
+      toast(saved ? '🎉 今日清单全部完成，打卡成功！' : '⚠️ 保存失败：今日清单已完成，但进度写不进本机存储，刷新会丢，请先导出备份');
+    } else {
+      toast(saved ? '本组完成 +' + itemMinutes(it) + ' 分钟' : '⚠️ 保存失败：本组完成 +' + itemMinutes(it) + ' 分钟，但进度没写进本机存储，刷新会丢');
+    }
+    delete it._finishing;
     renderToday();
   }
 
   // ---------- 做题（整组同屏 · 断点续做）----------
+  // 考场限时（P2）：按真实 CET6 单题标准折算——听力 30min/25题≈72s，选词60s，匹配/阅读120s；写作/翻译各 30min
+  var SEC_PER_Q = { listening: 72, cloze: 60, match: 120, reading: 120 };
+  var ESSAY_SEC = { writing: 1800, translation: 1800 };
+  function limitSecFor(it) {
+    if (it.type === 'writing' || it.type === 'translation') return ESSAY_SEC[it.type];
+    return (SEC_PER_Q[it.type] || 90) * (it.qids || []).length;
+  }
+  function fmtClock(sec) {
+    var m = Math.floor(Math.max(0, sec) / 60), s = Math.max(0, sec) % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function renderTimer() {
+    var s = session, el = $('quizTimer');
+    if (!el || !s || s.limitSec == null) return;
+    el.textContent = '⏱ ' + fmtClock(s.leftSec);
+    el.className = 'qtimer' + (s.overtime ? ' overtime' : '');
+  }
+  function startTimer() {
+    var s = session;
+    if (!s || s.limitSec == null) return;
+    if (s.timerId) clearInterval(s.timerId);
+    // N-UI-5：原来的 s.leftSec-- 是按"收到几次 tick"计数。主线程一被阻塞（渲染/GC/后台标签页节流），
+    // tick 会被合并或推迟，倒计时就比真实时间走得慢（实测阻塞 5s，真实过 6.2s，计时器只推进 2s）。
+    // 改成只记墙钟截止时刻，每次 tick 用 Date.now() 反算剩余；顺带修掉后台标签页回来后的时间亏损。
+    s.endAt = Date.now() + Math.max(0, s.leftSec) * 1000;
+    renderTimer();
+    s.timerId = setInterval(function () {
+      if (session !== s) return; // 已经退出了这一组就别再写它的数据
+      s.leftSec = Math.max(0, Math.round((s.endAt - Date.now()) / 1000));
+      renderTimer();
+      if (s.leftSec <= 0 && !s.overtime) {
+        s.overtime = true; renderTimer();
+        toast('⏰ 时间到！已超考场标准时限（软提醒，答题可继续，判分时会标注）');
+      }
+      if (s.leftSec % 15 === 0) { s.item.timerLeft = Math.max(0, s.leftSec); save(); } // 剩余时间落盘防意外退出
+    }, 1000);
+  }
+  function stopTimer() {
+    var s = session;
+    if (s && s.timerId) { clearInterval(s.timerId); s.timerId = null; }
+  }
+  function recordTime(it) { // 判分/完成时记录用时与达标，随当日统计累计
+    var s = session;
+    if (!s || s.limitSec == null || it.timeSpentSec != null) return;
+    it.timeSpentSec = s.limitSec - Math.max(0, s.leftSec);
+    it.withinTime = !s.overtime && it.timeSpentSec <= s.limitSec;
+    delete it.timerLeft;
+    var h = histToday();
+    h.timed = (h.timed || 0) + 1;
+    if (it.withinTime) h.timedWithin = (h.timedWithin || 0) + 1;
+    h.timedSec = (h.timedSec || 0) + it.timeSpentSec;
+    save();
+  }
+  /* ---------- P1-b（第三轮）答题浮层的焦点圈定 ----------
+     #quiz 是 position:fixed 铺满全屏的浮层，但背景 #app 仍在 Tab 序列里：只按 Tab 就能把焦点
+     走到被浮层完全遮住的按钮上（键盘用户看到的是"焦点凭空消失"）。这里做四件事：
+       1) 打开时记住触发元素，关闭时把焦点还回去；
+       2) 打开时给 #app 加 inert + aria-hidden，背景整块退出点击与辅助技术；
+       3) Tab / Shift+Tab 在浮层内循环（最后一个上按 Tab 回第一个，第一个上按 Shift+Tab 回最后一个）；
+       4) Esc 关闭浮层。
+     浮层内容每次作答都会重渲染，焦点会掉回 body —— 此时下一次 Tab 会被拉回浮层内第一个可聚焦元素。 */
+  var FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  var lastFocus = null; // 打开浮层前的焦点元素
+  function quizEl() { return $('quiz'); }
+  function quizOpen() { var q = quizEl(); return !!q && q.classList.contains('show'); }
+  function focusablesIn(root) {
+    var out = [];
+    if (!root) return out;
+    Array.prototype.forEach.call(root.querySelectorAll(FOCUSABLE), function (el) {
+      if (el.disabled) return;
+      if (el.closest('[hidden]') || el.closest('[aria-hidden="true"]')) return;
+      var cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return;
+      var r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return; // 不可见（display:none 的祖先 / 0 尺寸）不进 Tab 序列
+      out.push(el);
+    });
+    return out;
+  }
+  function bgInert(on) {
+    var app = $('app');
+    if (!app) return;
+    // inert 是标准做法（不可点、不可聚焦、对辅助技术隐藏）；老内核不认时用 aria-hidden 兜底。
+    if ('inert' in app) app.inert = !!on;
+    if (on) app.setAttribute('aria-hidden', 'true'); else app.removeAttribute('aria-hidden');
+  }
+  function quizFocusFirst() {
+    var list = focusablesIn(quizEl());
+    if (!list.length) return;
+    try { list[0].focus({ preventScroll: true }); } catch (e) { try { list[0].focus(); } catch (e2) { } }
+  }
+  function quizRestoreFocus() {
+    var el = lastFocus; lastFocus = null;
+    if (el && el.isConnected) { try { el.focus(); return; } catch (e) { } }
+    // 触发元素可能已被重渲染掉（退出时今日页整体重画）：退回当前可见页面的第一个可点元素
+    var app = $('app');
+    if (!app) return;
+    var shown = null;
+    ['today', 'wrong', 'stat', 'backup'].forEach(function (p) {
+      var s = $('page-' + p);
+      if (!shown && s && s.style.display !== 'none') shown = s;
+    });
+    var f = shown ? shown.querySelector(FOCUSABLE) : null;
+    if (f) { try { f.focus(); } catch (e) { } }
+  }
+  function onQuizKeydown(e) {
+    if (!quizOpen()) return;
+    if (e.key === 'Escape') { e.preventDefault(); quizExit(); return; }
+    if (e.key !== 'Tab') return;
+    var list = focusablesIn(quizEl());
+    if (!list.length) return;
+    var first = list[0], last = list[list.length - 1];
+    var a = document.activeElement;
+    if (!a || !quizEl().contains(a)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
+    if (e.shiftKey && a === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
+  }
+  document.addEventListener('keydown', onQuizKeydown, true);
+
   function startItem(it) {
-    session = { item: it, qids: (it.qids || []).slice(), draft: (it.draft && !it.done) ? it.draft : {}, submitted: false };
+    // N-UI-3：判分结果随清单条目持久化（it.judged/it.rightCount/it.answers）。刷新后重进同一组题，
+    // 恢复的是"已判分 + 当时的作答"只读视图，而不是空白可重做的状态（旧行为：再交一次，papers[].seen 1→2）。
+    var judged = !!(it && it.judged), doneItem = !!(it && it.done);
+    var draft = {};
+    if (judged) draft = it.answers || {};
+    else if (it && it.draft && !doneItem) draft = it.draft;
+    session = { item: it, qids: (it.qids || []).slice(), draft: draft, submitted: judged, rightCount: judged ? (it.rightCount || 0) : 0 };
+    var s = session;
+    s.limitSec = limitSecFor(it);
+    s.leftSec = (it.timerLeft != null ? it.timerLeft : s.limitSec);
+    s.overtime = s.leftSec <= 0;
+    lastFocus = document.activeElement; // P1-b：记住触发浮层的元素，关闭时还回去
     $('quiz').classList.add('show');
-    renderGroup();
+    bgInert(true); // P1-b：背景整块 inert + aria-hidden，Tab 不再逃到被浮层遮住的按钮上
+    $('quizProg').textContent = '加载题库…';
+    $('quizBody').innerHTML = '<div class="card"><div class="empty">正在加载本组题目所需题库卷…</div></div>';
+    // 按需加载（架构级）：先确保本组涉及的卷已动态加载（本地/SW 缓存即拿），再渲染；
+    // 加载期间用户退出（session 已置空）则不再继续渲染
+    ensureItemReady(it, function () {
+      if (session !== s) return;
+      renderGroup();
+      quizFocusFirst(); // P1-b：渲染完再把焦点移进浮层（渲染前浮层里还没有可聚焦元素）
+      // 已判分的组进来只是回看：不再计时，也不再累计一次限时统计；
+      // 其余情况必须照常启动——断点续做（it.timerLeft）也要从剩余秒数继续倒数，否则红灯不会亮
+      if (judged) stopTimer(); else startTimer();
+    });
   }
   function quizExit() {
+    stopTimer();
+    var s = session;
+    if (s && s.limitSec != null && !s.submitted && itOfSession().timeSpentSec == null) {
+      s.item.timerLeft = Math.max(0, s.leftSec); // 断点续做：剩余时间随草稿保存
+      save();
+    }
     $('quiz').classList.remove('show');
+    bgInert(false); // P1-b：先撤掉背景 inert，再重渲染并把焦点还回去
     session = null;
+    // 会话期间另一标签页写过存档：以存储里的最新状态为准重新载入（本次会话的草稿/计时已在上一步落盘）
+    if (pendingResync) {
+      pendingResync = false;
+      try { state = pruneGhosts(C.loadState(store, STATE_KEY, null)); } catch (e) { }
+    }
     renderToday(); renderWrong(); renderStat();
+    quizRestoreFocus(); // P1-b：焦点还给触发元素；它已被重画掉时退回当前页第一个可点元素
   }
+  function itOfSession() { return session ? session.item : null; }
   function saveDraft() { // 草稿即时存入清单条目（plan 在 state 内，持久化），退出浏览器可续做
     var s = session;
     if (s && s.item && s.item.qids && !s.item.isWrong) { s.item.draft = s.draft; save(); }
@@ -509,6 +932,41 @@
     });
     return runs;
   }
+  // N-SEC-1：听力页地址白名单。esc() 只转义 HTML 引号，拦不住 `javascript:` 这类伪协议——
+  // 未校验就把外部 URL 塞进 <iframe src="...">，父页脚本会被执行（实测 window.__pwned 由 0 变 1）。
+  // 口径：必须 https、主机必须命中白名单（lazynote.cn 及其子域），且主机前缀要真的对得上。
+  var LISTEN_HOSTS = ['english-exam.lazynote.cn', 'lazynote.cn'];
+  function inListenHosts(host) {
+    host = String(host || '').toLowerCase();
+    for (var i = 0; i < LISTEN_HOSTS.length; i++) {
+      var h = LISTEN_HOSTS[i];
+      if (host === h || host.slice(-(h.length + 1)) === '.' + h) return true;
+    }
+    return false;
+  }
+  function safeListeningUrl(u) {
+    if (typeof u !== 'string' || u.indexOf('https://') !== 0) return ''; // 只认 https：javascript:/data:/http: 一律拒
+    var host = '';
+    try { host = (new URL(u)).hostname; } catch (e) { return ''; }
+    if (!host || !inListenHosts(host)) return ''; // 非白名单域名：宁可不播，也不把外部页面嵌进本页
+    if (u.indexOf('https://' + host + '/') !== 0) return ''; // 前缀必须落在该主机下（replace 可能被 URL 内容污染）
+    return u;
+  }
+  // 听力播放器：把懒笔记整卷页地址换成聚焦的听力专项页（内嵌 iframe 播放）；共用卷无地址时取共用源卷
+  function listeningUrlFor(paper, banks) {
+    var u = paper.listeningUrl;
+    if (!u && paper.listeningSharedWith) {
+      for (var i = 0; i < banks.length; i++) {
+        if (banks[i].id === paper.listeningSharedWith && banks[i].listeningUrl) { u = banks[i].listeningUrl; break; }
+      }
+    }
+    // 注意顺序：先替换再校验——白名单必须罩住最终要写进 src 的那个字符串，而不是替换前的原始值
+    return safeListeningUrl(u ? u.replace('/?f=w', '/listening/') : '');
+  }
+  function qnoRange(qs) {
+    var a = qs[0].qno, b = qs[qs.length - 1].qno;
+    return a === b ? '第 ' + a + ' 题' : '第 ' + a + '–' + b + ' 题';
+  }
   function renderGroup() {
     var s = session, it = s.item;
     var body = $('quizBody');
@@ -519,9 +977,13 @@
       var label = it.type === 'writing' ? '写作' : '翻译（汉译英）';
       $('quizProg').textContent = label + ' · ' + paper.id + ' · 每周一练';
       var draft = (state.essays[it.type] && state.essays[it.type].text) || '';
+      // N-CONT-1：写作题配图。题库侧新增 writing.image（值为 img/{卷号}.jpg），图片放在 app/bank/img/。
+      // 本页就在 app/ 目录下，所以用相对路径 bank/ + 该值；file:// 下同样能加载。没有该字段就按原样不渲染。
+      var wImg = (wt && typeof wt.image === 'string') ? wt.image : '';
+      var imgHtml = wImg ? '<img src="' + esc('bank/' + wImg) + '" style="max-width:100%;border-radius:8px;margin:10px 0;" alt="写作题图">' : '';
       body.innerHTML =
         '<div class="card"><h3>' + label + '题面（' + esc(paper.id) + '）</h3>' +
-        '<div class="passage" style="max-height:none">' + esc(wt.prompt) + '</div></div>' +
+        '<div class="passage" style="max-height:none">' + esc(wt.prompt) + '</div>' + imgHtml + '</div>' +
         '<textarea class="essay-ta" id="essayTa" placeholder="在这里打草稿（自动保存，可不写）">' + esc(draft) + '</textarea>' +
         '<div class="actions" style="margin-top:12px">' +
         '<button class="btn" id="essayDone">我写完了，本组打卡</button>' +
@@ -530,9 +992,16 @@
         '<div class="sample" id="sampleBox">' + esc(wt.sample) + '</div>' +
         '<div class="sample" id="checkBox"></div>';
       $('essayTa').oninput = function () {
-        state.essays[it.type] = { lastAt: today, text: this.value }; save();
+        state.essays[it.type] = { lastAt: today, text: this.value };
+        // S1：作文保存加 300ms 防抖 + 1s 兜底
+        // · 防抖：停止输入 300ms 后才落盘，避免逐键写存储
+        // · 兜底：持续输入时每 1s 强制落盘一次，防止丢稿
+        var now = Date.now();
+        clearTimeout(essaySaveTimer);
+        if (now - essayLastSave >= 1000) { save(); essayLastSave = now; }
+        else { essaySaveTimer = setTimeout(function () { save(); essayLastSave = Date.now(); }, 300); }
       };
-      $('essayDone').onclick = function () { finishItem(it); quizExit(); };
+      $('essayDone').onclick = function () { this.disabled = true; recordTime(it); finishItem(it); quizExit(); }; // N-UI-2：点完置灰堵连点
       $('essaySample').onclick = function () { $('sampleBox').classList.toggle('show'); };
       $('essayCheck').onclick = function () { runEssayCheck(it, paper, wt); };
       return;
@@ -546,16 +1015,25 @@
     var html = '';
     buildRuns(s.qids).forEach(function (run) {
       if (run.type === 'listening') {
-        html += '<div class="card linkline"><b>🎧 听力音频</b>：点<a href="' + esc(run.paper.listeningUrl) + '" target="_blank" rel="noopener">打开在线听力页</a>（新标签页播放），本组 ' + run.qs.length + ' 题共用这一段录音。</div>';
+        var lu = listeningUrlFor(run.paper, BANKS);
+        if (lu && !safeListeningUrl(lu)) lu = ''; // 双保险：写进 src/href 的串一律再确认一次白名单（N-SEC-1）
+        var srcPid = (run.paper.listeningUrl ? run.paper.id : run.paper.listeningSharedWith) || run.paper.id; // 共用卷取源卷 id，匹配烘焙数据
+        html += '<div class="card"><div class="row"><b>🎧 听力音频</b>' +
+          (lu ? '<a href="' + esc(lu) + '" target="_blank" rel="noopener" class="muted" style="font-size:12px">原站打开 ↗</a>' : '') + '</div>' +
+          '<div class="muted" style="font-size:12px;margin-bottom:8px">本组 ' + run.qs.length + ' 题共用这一段录音（' + qnoRange(run.qs) + '）' + (run.paper.listeningSharedWith ? ' · 听力与 ' + esc(run.paper.listeningSharedWith) + ' 共用' : '') + '</div>' +
+          listenPlayerBlock(srcPid, run.qs) +
+          '</div>';
       } else if (run.type === 'cloze') {
-        html += renderClozePassage(run.paper, run.qs);
-        html += '<div class="wordbank">' + (run.qs[0].options || []).map(function (w) { return '<span>' + esc(w) + '</span>'; }).join('') + '</div>';
+        var cPid = run.paper.id + '#cloze#' + run.mk;
+        html += renderClozeRun(run, cPid); // R5-选词方案2：整篇词库 + 段落内填空位，不再每空重复 15 词
       } else if (run.type === 'match') {
-        html += '<div class="passage" style="max-height:none"><b>' + esc(run.paper.matchIntro || '') + '</b>\n\n' +
-          (run.paper.matchParagraphs || []).map(function (p) { return '[' + p.label + '] ' + p.text; }).join('\n\n') + '</div>';
+        var mPid = run.paper.id + '#match#' + run.mk;
+        html += '<div class="passage" data-pid="' + esc(mPid) + '" style="max-height:none"><b>' + esc(run.paper.matchIntro || '') + '</b>\n\n' +
+          (run.paper.matchParagraphs || []).map(function (p) { return '[' + esc(p.label) + '] ' + esc(p.text); }).join('\n\n') + '</div>' + hlBar(mPid);
       } else if (run.type === 'reading') {
+        var rPid = run.paper.id + '#reading#' + run.mk;
         var rp = (run.paper.readingPassages || {})[String(run.qs[0].qno)] || '';
-        html += '<div class="passage" style="max-height:none">' + esc(rp) + '</div>';
+        html += '<div class="passage" data-pid="' + esc(rPid) + '" style="max-height:none">' + esc(rp) + '</div>' + hlBar(rPid);
       }
       run.qs.forEach(function (q) { html += renderOneQ(q, run.paper); });
     });
@@ -564,10 +1042,50 @@
         '<button class="btn" id="groupSubmit"' + (answered >= s.qids.length ? '' : ' disabled') + '>提交本组（' + answered + '/' + s.qids.length + '）</button></div></div>';
     } else {
       html += '<div class="card" id="groupBar"><div class="row"><b>本组结果：' + (s.rightCount || 0) + '/' + s.qids.length + ' 答对</b>' +
+        (s.item.timeSpentSec != null ? '<span class="muted">用时 ' + fmtClock(s.item.timeSpentSec) + ' / 标准 ' + fmtClock(s.limitSec) + (s.item.withinTime ? ' ✓ 达标' : ' ⚠ 超时') + '</span>' : '') +
         '<button class="btn ok" id="groupDone">完成，返回今日</button></div></div>';
     }
     body.innerHTML = html;
+    restoreHl();
+    attachHighlighter();
+    bindListenPlayer(body); // R5 听力方案A：绑定原生播放器（判分前后都可听音频）
     if (!s.submitted) {
+      // R5-选词方案2：词库点选填空交互
+      currentClozeQno = null;
+      Array.prototype.forEach.call(body.querySelectorAll('.wb-chip'), function (chip) {
+        chip.onclick = function () {
+          if (currentClozeQno == null) { toast('先点选段落里的一个空格'); return; }
+          var slot = body.querySelector('.cloze-slot[data-qno="' + currentClozeQno + '"]');
+          if (!slot) return;
+          var qid = slot.getAttribute('data-q');
+          var L = chip.getAttribute('data-w');
+          s.draft[qid] = L;
+          slot.setAttribute('data-picked', L);
+          slot.innerHTML = esc(chip.getAttribute('data-v'));
+          saveDraft();
+          updateClozeAnswered();
+        };
+      });
+      Array.prototype.forEach.call(body.querySelectorAll('.cloze-slot'), function (slot) {
+        slot.onclick = function () {
+          var qno = Number(slot.getAttribute('data-qno'));
+          var picked = slot.getAttribute('data-picked');
+          if (currentClozeQno === qno && picked) {
+            var qid = slot.getAttribute('data-q');
+            delete s.draft[qid];
+            slot.setAttribute('data-picked', '');
+            slot.innerHTML = '&nbsp;';
+            saveDraft();
+            updateClozeAnswered();
+            currentClozeQno = null;
+            slot.classList.remove('focus');
+            return;
+          }
+          currentClozeQno = qno;
+          Array.prototype.forEach.call(body.querySelectorAll('.cloze-slot'), function (x) { x.classList.remove('focus'); });
+          slot.classList.add('focus');
+        };
+      });
       Array.prototype.forEach.call(body.querySelectorAll('.opt'), function (b) {
         b.onclick = function () {
           var qid = b.getAttribute('data-q');
@@ -584,10 +1102,223 @@
       $('groupSubmit').onclick = submitGroup;
     } else {
       $('groupDone').onclick = function () {
-        if (it.isWrong) { toast('本轮错题重练完成'); quizExit(); }
-        else { finishItem(it); quizExit(); }
+        if (it.isWrong || it.isPoint) {
+          // 错题重练/专项练也按题型标准时长计入今日分钟（此前只计清单组，复习时间全丢）
+          var mins = 0;
+          (it.qids || []).forEach(function (id) {
+            var q = C.findQ(BANKS, id);
+            mins += (q && C.TYPE_META[q.type] ? C.TYPE_META[q.type].minPerQ : 1);
+          });
+          mins = Math.round(mins * 10) / 10;
+          if (mins > 0) addMinutes(mins);
+          toast(it.isWrong ? '本轮错题重练完成（+' + mins + ' 分钟）' : '薄弱考点专项练完成，考点正确率已更新（+' + mins + ' 分钟）');
+          quizExit();
+        }
+        else { this.disabled = true; finishItem(it); quizExit(); } // N-UI-2：点完立刻置灰，堵住连点
       };
     }
+  }
+  // ---------- 听力播放器：原生 <audio> + 单文件 m4a ----------
+  // 数据来自 app/bank/listeningMeta.js（烘焙 CET6_LISTEN_META[srcPaperId] = {src, pieces:[{label,start,end}]}）
+  // 原始音频是懒笔记的 HLS 流，其 CORS 只放行自家域，在本页无法跨域加载，
+  // 故已转码为单文件 AAC(m4a) 镜像到自有仓库，由 <audio> 直连播放（不用 m3u8 / hls.js）。
+  // 线路顺序（2026-11-05 实测）：GitHub Pages 可达(206)；cdn.jsdelivr.net 在本机 TLS 握手即被拦，
+  // 连一个无关的 npm 小文件同样返回 000，属下载域名级阻断 → Pages 为主、jsDelivr 为备。
+  var LISTEN_PRIMARY = 'https://gongyining0601.github.io/cet-audio';
+  var LISTEN_FALLBACK = 'https://cdn.jsdelivr.net/gh/gongyining0601/cet-audio@v1.0';
+  // 会话内复用已探测出的可用线路；file:// / 隐私模式下 sessionStorage 可能抛错，读写都兜住
+  function getGoodBase() {
+    try {
+      var v = sessionStorage.getItem('cet6_audio_base');
+      return (v === LISTEN_PRIMARY || v === LISTEN_FALLBACK) ? v : null;
+    } catch (e) { return null; }
+  }
+  function setGoodBase(v) { try { sessionStorage.setItem('cet6_audio_base', v); } catch (e) {} }
+  function listenSrc(pid) {
+    var u = ((window.CET6_LISTEN_META || {})[pid] || {}).src || '';
+    var m = u.match(/listening\.lazynote\.cn\/(cet[46])\/(\d+)\/index\.m3u8/);
+    return m ? LISTEN_PRIMARY + '/' + m[1] + '/' + m[2] + '.m4a' : u;
+  }
+  function listenPieces(pid) { return ((window.CET6_LISTEN_META || {})[pid] || {}).pieces || null; }
+  function listenQRange(label) {
+    var m = /(\d+)\s*[–-]\s*(\d+)/.exec(label || '');
+    return m ? [Number(m[1]), Number(m[2])] : null;
+  }
+  function listenPlayerBlock(pid, qs) {
+    // 注意：findPaper 按题目id查卷，这里手里是卷id（共用卷时为源卷id），需按 bank.id 直查
+    var paper = null;
+    for (var bi = 0; bi < BANKS.length; bi++) if (BANKS[bi].id === pid) { paper = BANKS[bi]; break; }
+    var pieces = listenPieces(pid);
+    if (!pieces || !pieces.length) {
+      // 烘焙缺失 → 退回原站 iframe（仍走白名单）
+      var lu = listeningUrlFor(paper || {}, BANKS);
+      if (lu && !safeListeningUrl(lu)) lu = '';
+      // sandbox 只放 allow-scripts + allow-same-origin（跨域播放器需要自身源跑脚本/拉流，且域名已过白名单）；
+      // referrerpolicy=no-referrer 避免把本页地址泄给第三方
+      return lu
+        ? '<iframe src="' + esc(lu) + '" style="width:100%;height:250px;border:1px solid var(--line);border-radius:10px;background:#fff" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer" loading="lazy" title="听力播放器"></iframe>'
+        : '<div class="empty">本卷听力暂不可用，请在浏览器搜索该卷听力音频</div>';
+    }
+    var min = Math.min.apply(null, qs.map(function (q) { return q.qno; }));
+    var cur = 0;
+    for (var i = 0; i < pieces.length; i++) {
+      var r = listenQRange(pieces[i].label);
+      if (r && min >= r[0] && min <= r[1]) { cur = i; break; }
+    }
+    var strip = pieces.map(function (pc, i) {
+      var r = listenQRange(pc.label);
+      var txt = (i === cur ? '▶ 本篇 ' : '篇' + (i + 1) + ' ') + (r ? esc(r[0] + '-' + r[1]) : '');
+      return '<button type="button" class="lp-piece' + (i === cur ? ' cur' : '') + '" data-i="' + i + '" title="' + esc(pc.label) + '">' + txt + '</button>';
+    }).join('');
+    var fbLu = listeningUrlFor(paper || {}, BANKS);
+    if (fbLu && !safeListeningUrl(fbLu)) fbLu = '';
+    var fbLink = fbLu ? '<a href="' + esc(fbLu) + '" target="_blank" rel="noopener" style="font-weight:700">打开懒笔记原站收听 ↗</a>' : '';
+    return '<div class="listen-player" data-pid="' + esc(pid) + '" data-cur="' + cur + '">' +
+      '<audio controls playsinline webkit-playsinline preload="metadata" style="width:100%;display:block"></audio>' +
+      '<div class="lp-loading" style="display:none;margin-top:6px;padding:6px 10px;border-radius:8px;background:var(--line);font-size:12.5px;color:var(--sub)">⏳ 正在加载听力音频，请稍候…</div>' +
+      '<div class="listen-strip">' + strip +
+      '<label class="lp-auto"><input type="checkbox" checked> 篇间连播</label></div>' +
+      '<div class="lp-fallback" style="display:none;margin-top:8px;padding:8px 10px;border:1px solid var(--warn);border-radius:8px;font-size:12.5px">🎧 多次尝试仍无法加载音频。<button type="button" class="lp-retry" style="margin:0 6px;padding:2px 10px;border:1px solid var(--warn);border-radius:6px;background:#fff;cursor:pointer">🔄 重试</button>或 ' + fbLink + ' ，听完返回作答。</div>' +
+      '<div class="muted" style="font-size:11.5px;margin-top:6px">点「▶ 本篇」或任一篇播放；勾选连播时自动接续下一篇。一直转圈无法播放？请 ' + fbLink + '（新窗口），听完返回作答。</div></div>';
+  }
+  // 播放策略：<audio> 直连自有镜像的单文件 m4a。原始 HLS 流因 CORS 只放行懒笔记自家域，
+  // 在本页用 fetch/XHR 或媒体元素跨域加载都会被拦，故不走 m3u8 / hls.js / <video>。
+  // 主线路加载报错、或 8s 内仍无有效数据(readyState<2)，按 2s/5s/10s 退避交替备用线路；
+  // 三次都失败才显示原站收听入口与手动重试。
+  function bindListenPlayer(cont) {
+    Array.prototype.forEach.call(cont.querySelectorAll('.listen-player'), function (box) {
+      var pid = box.getAttribute('data-pid');
+      var src = listenSrc(pid), pieces = listenPieces(pid);
+      if (!src || !pieces || !pieces.length) return;
+      var video = box.querySelector('audio');
+      var auto = box.querySelector('.lp-auto input');
+      var fallback = box.querySelector('.lp-fallback');
+      var loading = box.querySelector('.lp-loading');
+      var cur = Number(box.getAttribute('data-cur') || 0);
+      box._autoOn = !!auto;
+      box._goodBase = getGoodBase(); // 本次会话已探明的可用线路，首次加载即可直接走它
+      if (auto) auto.onchange = function () { box._autoOn = auto.checked; };
+      var loadTimer = null;
+      var LOADING_TEXT = '⏳ 正在加载听力音频，请稍候…';
+      var RETRY_DELAYS = [2000, 5000, 10000]; // 智能重试：递增退避，3 次都失败才给兜底
+      function clearTimer() { if (loadTimer) { clearTimeout(loadTimer); loadTimer = null; } }
+      function showLoading(on, txt) {
+        if (!loading) return;
+        if (on) loading.textContent = txt || LOADING_TEXT;
+        loading.style.display = on ? '' : 'none';
+      }
+      function showFb() { // 自动重试耗尽：给原站入口 + 手动重试，并解除"已加载"标记以便重试
+        clearTimer();
+        showLoading(false);
+        box._srcSet = false; // 关键修复：加载失败后允许重设 src，而非在坏源上 seek
+        if (fallback) fallback.style.display = '';
+      }
+      // 智能重试：主备交替（Pages ↔ jsDelivr），2s/5s/10s 递增退避
+      function scheduleRetry() {
+        var n = box._retryCount || 0;
+        if (n >= RETRY_DELAYS.length) { showFb(); return; }
+        box._retryCount = n + 1;
+        var d = RETRY_DELAYS[n];
+        clearTimer();
+        showLoading(true, '⏳ 网络不给力，' + Math.round(d / 1000) + ' 秒后自动重试（第 ' + box._retryCount + '/' + RETRY_DELAYS.length + ' 次）…');
+        loadTimer = setTimeout(function () {
+          var curUrl = video.currentSrc || video.src || '';
+          var nextBase = curUrl.indexOf(LISTEN_FALLBACK) === 0 ? LISTEN_PRIMARY : LISTEN_FALLBACK; // 交替线路
+          box._srcSet = true;
+          video.onloadedmetadata = function () { if (box._curPc) seekStart(box._curPc); };
+          video.src = src.replace(LISTEN_PRIMARY, nextBase);
+          showLoading(true);
+          armTimer();
+        }, d);
+      }
+      // 部分浏览器（微信X5/老内核等）对跨域音频既不播也不抛错，一直转圈：
+      // 8秒内没出现有效数据(readyState>=2)即判定卡住，转智能重试，避免无限等待。
+      function armTimer() {
+        clearTimer();
+        loadTimer = setTimeout(function () { if (video.readyState < 2) scheduleRetry(); }, 8000);
+      }
+      function onReady() {
+        box._retryCount = 0; clearTimer(); showLoading(false);
+        // 实际出声的线路记进会话，后续卷/后续篇不必再赌一次
+        var u = video.currentSrc || video.src || '';
+        if (u.indexOf(LISTEN_PRIMARY) === 0) setGoodBase(LISTEN_PRIMARY);
+        else if (u.indexOf(LISTEN_FALLBACK) === 0) setGoodBase(LISTEN_FALLBACK);
+      }
+      video.addEventListener('loadeddata', onReady);
+      video.addEventListener('playing', onReady);
+      video.addEventListener('canplay', onReady);
+      video.addEventListener('progress', function () { // 缓冲进度百分比，缓解"转圈焦虑"
+        try {
+          if (!video.buffered.length || !video.duration) return;
+          var pct = Math.min(100, Math.round(video.buffered.end(video.buffered.length - 1) / video.duration * 100));
+          if (loading && loading.style.display !== 'none') loading.textContent = '⏳ 正在加载听力音频… 已缓冲 ' + pct + '%';
+        } catch (e) {}
+      });
+      video.onerror = function () {
+        if (!video.currentSrc && !video.src) return; // 尚未加载任何源时的空触发不打扰
+        scheduleRetry();
+      };
+      function markCur(i) {
+        Array.prototype.forEach.call(box.querySelectorAll('.lp-piece'), function (b) { b.classList.remove('cur'); });
+        var btns = box.querySelectorAll('.lp-piece');
+        if (btns[i]) btns[i].classList.add('cur');
+        box.setAttribute('data-cur', String(i));
+        cur = i;
+      }
+      function seekStart(pc) {
+        try { video.currentTime = pc.start; } catch (e) {}
+        video.play && video.play().catch(function () {});
+      }
+      function loadPiece(i) {
+        var pc = pieces[i];
+        if (!pc) return;
+        box._curPc = pc;
+        box._retryCount = 0; // 用户主动点篇：重置重试计数
+        if (fallback) fallback.style.display = 'none';
+        if (!box._srcSet || video.readyState === 0) {
+          // 首次加载，或上次加载失败（_srcSet已被showFb重置）→ 重新设 src
+          box._srcSet = true;
+          video.onloadedmetadata = function () { seekStart(pc); };
+          // 预加载已探测出可用线路时直接走它，省一次失败等待
+          video.src = box._goodBase ? src.replace(LISTEN_PRIMARY, box._goodBase) : src;
+          showLoading(true);
+        } else {
+          seekStart(pc);
+        }
+        armTimer();
+        markCur(i);
+      }
+      video.ontimeupdate = function () {
+        if (!box._autoOn) return;
+        var pc = pieces[cur];
+        if (pc && video.currentTime >= pc.end && cur < pieces.length - 1) loadPiece(cur + 1);
+      };
+      Array.prototype.forEach.call(box.querySelectorAll('.lp-piece'), function (b) {
+        b.onclick = function () { loadPiece(Number(b.getAttribute('data-i'))); };
+      });
+      var retryBtn = box.querySelector('.lp-retry');
+      if (retryBtn) retryBtn.onclick = function () { box._retryCount = 0; box._srcSet = false; loadPiece(cur); };
+      // 进入题组即后台预加载整卷音频（HTTP缓存复用，点播放秒开）；顺带探测可用
+      // 线路写入 _goodBase 与 sessionStorage。移动端省流模式下浏览器可自行忽略 preload，无副作用。
+      if (window.Audio) {
+        var pre = new Audio();
+        pre.preload = 'auto';
+        // 会话内已探明线路时直接从它起步，不再每次进题组都重演一次失败等待
+        var good = getGoodBase();
+        pre._fb = (good === LISTEN_FALLBACK);
+        pre.onerror = function () {
+          if (pre._fb) return;
+          pre._fb = true;
+          pre.src = src.replace(LISTEN_PRIMARY, LISTEN_FALLBACK);
+        };
+        pre.addEventListener('loadeddata', function () {
+          box._goodBase = pre._fb ? LISTEN_FALLBACK : LISTEN_PRIMARY;
+          setGoodBase(box._goodBase);
+        });
+        pre.src = good ? src.replace(LISTEN_PRIMARY, good) : src;
+        box._preload = pre;
+      }
+    });
   }
   function optBtn(q, v, text) {
     var s = session;
@@ -603,20 +1334,18 @@
   }
   function renderOneQ(q, paper) {
     var html = '<div class="card"><b>' + (q.type === 'match' ? '' : 'Q' + esc(String(q.qno)) + '. ') + esc(q.stem) + '</b><span class="muted" style="display:block;margin-top:2px">真题 ' + esc(paper.id) + '</span>';
+    // R5-选词方案2：选词空格已并入段落填空位（renderClozeRun），此处直接返回
+    if (q.type === 'cloze') return '';
     if (q.type === 'match') {
       html += '<div class="muted" style="margin:6px 0 10px">这条信息出现在哪个段落？</div>';
       var letters = (paper.matchParagraphs || []).map(function (p) { return p.label; });
       html += '<div style="display:flex;flex-wrap:wrap;gap:8px">' + letters.map(function (L) {
-        return optBtn(q, L, L + ' 段');
+        return optBtn(q, L, esc(L) + ' 段');
       }).join('') + '</div>';
-    } else if (q.type === 'cloze') {
-      html += '<div class="muted" style="margin:6px 0 10px">第 ' + esc(String(q.qno)) + ' 空应填哪个词？</div>';
-      html += (q.options || []).map(function (o, i) {
-        return optBtn(q, String.fromCharCode(65 + i), esc(o));
-      }).join('');
     } else {
       html += '<div style="margin-top:10px">' + (q.options || []).map(function (o, i) {
-        return optBtn(q, String.fromCharCode(65 + i), esc(o));
+        // 题库选项自带 "A) " 前缀：剥离后只显示纯文本，字母只用于 data-v/交互
+        return optBtn(q, String.fromCharCode(65 + i), esc(stripOptionPrefix(o)));
       }).join('') + '</div>';
     }
     if (session.submitted) {
@@ -632,31 +1361,193 @@
   function submitGroup() {
     var s = session, it = s.item;
     if (s.submitted) return; // 防重复判分/重复记录（连点、回车等任何路径只记一次）
+    // N-UI-3：清单里的组已判过分（含刷新后重建的 session）就直接回放结果，不再重判——
+    // 否则 papers[].seen/qCount/right 会被同一组题重复累加
+    if (it.judged) { s.submitted = true; s.rightCount = it.rightCount || 0; s.draft = it.answers || s.draft; renderGroup(); return; }
     var ans = 0; s.qids.forEach(function (id) { if (s.draft[id]) ans++; });
     if (ans < s.qids.length) { toast('还有 ' + (s.qids.length - ans) + ' 题未作答'); return; }
     var right = 0;
     s.qids.forEach(function (id) {
       var q = C.findQ(BANKS, id);
+      if (!q) return; // 幽灵 qid（旧备份/题库变动）：跳过该题，不判分不记错，也不让 null 崩掉判分（M-2/M-3）
       var correct = C.judge(q, s.draft[id]);
       if (correct) right++;
-      C.recordResult(state, id, correct, today);
+      C.recordResult(state, id, correct, today, q.points); // P7 按需加载：考点快照随做题记录，统计页不依赖卷是否加载
+      if (!correct) state.papers[id].lastAnswer = s.draft[id]; // 错题 CSV 用：记下你答错的选项
       var h = histToday(); h.qCount++; if (correct) h.right++;
     });
     s.submitted = true; s.rightCount = right;
+    // N-UI-3：把判分结果落到清单条目上并持久化（answers 必须是副本——下面就会把草稿删掉）
+    if (it.qids && !it.isWrong && !it.isPoint && !it.extra) {
+      it.judged = true; it.rightCount = right; it.answers = s.draft;
+    }
     if (it.qids && !it.isWrong) { delete it.draft; } // 判分后清空草稿
+    recordTime(it); // 判分同时记录考场用时（只在首次判分时生效）
     save();
     renderGroup();
     window.scrollTo(0, 0);
   }
-  function renderClozePassage(paper, qs) {
+  // R5-选词方案2：整篇词库点选填空。
+  // 词库 = 15 个可点词块（带字母 A-O），空格 = 段落内的可点填空位。
+  // 点填空位选中（focus）→ 点词块填入（draft[qid]=字母）；再点已填空位可清除。
+  // 已判分后：填空位显示所选词并标 right/wrongpick，词库禁用。
+  function clozeBank(run) {
+    return (run.qs[0] && run.qs[0].options) || [];
+  }
+  function clozeWordAt(bank, letter) {
+    if (letter == null || letter === '') return '';
+    var i = String(letter).charCodeAt(0) - 65;
+    return stripOptionPrefix(bank[i] || ''); // 题库词块自带 "A) " 前缀，显示时剥离
+  }
+  function renderClozeRun(run, pid) {
+    var paper = run.paper, s = session;
+    var bank = clozeBank(run);
+    var wb = '<div class="wordbank" id="clozeBank">' + bank.map(function (w, i) {
+      var L = String.fromCharCode(65 + i);
+      var dis = s.submitted ? ' disabled' : '';
+      return '<button type="button" class="wb-chip" data-w="' + L + '" data-v="' + esc(w) + '"' + dis + '>' + esc(L) + ') ' + esc(stripOptionPrefix(w)) + '</button>';
+    }).join('') + '</div>';
     var txt = paper.clozePassage || '';
-    var qnos = qs.map(function (q) { return q.qno; });
-    var html = '<div class="passage" style="max-height:none;overflow:visible">' + esc(txt);
-    html = html.replace(/\b(2[6-9]|3[0-5])\b/g, function (m) {
-      if (qnos.indexOf(Number(m)) < 0) return m;
-      return '<span class="blank-mark">' + m + '</span>';
+    var html = wb + '<div class="passage" data-pid="' + esc(pid) + '" style="max-height:none;overflow:visible">' + esc(txt);
+    html = html.replace(/__(2[6-9]|3[0-5])__/g, function (m, num) {
+      var qno = Number(num);
+      var q = null;
+      for (var k = 0; k < run.qs.length; k++) if (run.qs[k].qno === qno) { q = run.qs[k]; break; }
+      if (!q) return m;
+      var picked = s.draft[q.id] || null;
+      var word = clozeWordAt(bank, picked);
+      var cls = 'cloze-slot';
+      if (s.submitted) {
+        cls += (picked === q.answer) ? ' right' : (picked ? ' wrongpick' : '');
+        return '<button type="button" class="' + cls + '" data-q="' + esc(q.id) + '" data-qno="' + qno + '" data-picked="' + (picked || '') + '" disabled title="正确词：' + esc(clozeWordAt(bank, q.answer)) + '">' + (word ? esc(word) : '&nbsp;') + '</button>';
+      }
+      return '<button type="button" class="' + cls + '" data-q="' + esc(q.id) + '" data-qno="' + qno + '" data-picked="' + (picked || '') + '">' + (word ? esc(word) : '&nbsp;') + '</button>';
     });
-    return html + '</div>';
+    return html + '</div>' + hlBar(pid);
+  }
+  function updateClozeAnswered() {
+    var s = session;
+    if (!s) return;
+    var ans = 0; s.qids.forEach(function (id) { if (s.draft[id]) ans++; });
+    $('quizProg').textContent = grpTagFor(s) + '本组 ' + s.qids.length + ' 题 · 已答 ' + ans;
+    var sb = $('groupSubmit');
+    if (sb) { sb.disabled = false; sb.textContent = '提交本组（' + ans + '/' + s.qids.length + '）'; }
+  }
+  function grpTagFor(s) {
+    var grpPaper = (s.item.qids && s.item.qids.length) ? C.findPaper(BANKS, s.item.qids[0]) : null;
+    return grpPaper ? grpPaper.id + ' · ' : (s.item.paperId ? s.item.paperId + ' · ' : '');
+  }
+
+  // ---------- P4 阅读划词高亮：选中文字 → 点「高亮」标黄；点已高亮词取消；随做题组持久化到 state.hl ----------
+  // P2-b（第三轮）：单段高亮上限。core.normalizeState 与这里的 saveHl 用同一个值。
+  var HL_MAX = 50;
+  // 本段在"这次载入"时被 core 截掉多少处（>0 才提示）；重新保存过就清掉，免得提示过时
+  function hlCutOf(pid) { return (hlTruncated.pids && hlTruncated.pids[pid]) || 0; }
+  function hlClearCut(pid) { if (hlTruncated.pids) delete hlTruncated.pids[pid]; }
+  function hlBar(pid) {
+    var cut = hlCutOf(pid);
+    return '<div class="hl-bar"><span>🖍 划选文字后点「高亮」，点击已高亮词可取消</span>' +
+      '<button class="hl-add" data-pid="' + esc(pid) + '">高亮</button>' +
+      '<button class="hl-clear" data-pid="' + esc(pid) + '">清本段</button></div>' +
+      // 单独一行小字（不是塞进上面那一行 flex），窄屏也只是换行，不会横向溢出
+      (cut ? '<div class="muted" style="margin:-8px 0 12px">⚠️ 本段原有的高亮有 ' + cut + ' 处超出单段上限 ' + HL_MAX + ' 处，' +
+        '本次载入按顺序保留了最靠前的 ' + HL_MAX + ' 处（超出的部分不会写回存档）</div>' : '');
+  }
+  function passageOfPid(pid) {
+    var ps = $('quizBody').querySelectorAll('.passage');
+    for (var i = 0; i < ps.length; i++) if (ps[i].getAttribute('data-pid') === pid) return ps[i];
+    return null;
+  }
+  function saveHl(pid) {
+    state.hl = state.hl || {}; // 旧存档可能没有 hl 字段
+    var p = passageOfPid(pid);
+    var texts = [];
+    if (p) Array.prototype.forEach.call(p.querySelectorAll('mark.hl'), function (m) { texts.push(m.textContent); });
+    // N-UI-6：单段高亮上限 HL_MAX（core 侧 normalizeState 同样 slice(0,50)）。超了就明说并保留最靠前的那些，
+    // 不再让后面的高亮"看起来加了、刷新就没了"。同时清掉多出来的 <mark>，画面与存档保持一致。
+    if (texts.length > HL_MAX) {
+      var extra = texts.length - HL_MAX;
+      texts = texts.slice(0, HL_MAX);
+      Array.prototype.forEach.call(p.querySelectorAll('mark.hl'), function (m, i) { if (i >= HL_MAX) m.remove(); });
+      toast('本段高亮已达上限 ' + HL_MAX + ' 处，本次多出的 ' + extra + ' 处没有保存');
+    }
+    if (texts.length) state.hl[pid] = texts; else delete state.hl[pid];
+    hlClearCut(pid); // P2-b：本段已按当前内容重新落盘，载入时那条"被截断"提示不用再挂着
+    save();
+  }
+  // 恢复持久化的高亮：在段落文本里按原文定位首个匹配并包 <mark>
+  function restoreHl() {
+    var saved = state.hl || {};
+    Array.prototype.forEach.call($('quizBody').querySelectorAll('.passage[data-pid]'), function (p) {
+      var pid = p.getAttribute('data-pid');
+      var texts = saved[pid];
+      if (!texts || !texts.length) return;
+      texts.forEach(function (t) {
+        var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) {
+          var n = walker.currentNode;
+          if (!n.nodeValue || n.parentNode.tagName === 'MARK') continue;
+          var idx = n.nodeValue.indexOf(t);
+          if (idx < 0) continue;
+          var mark = document.createElement('mark');
+          mark.className = 'hl';
+          n.parentNode.insertBefore(document.createTextNode(n.nodeValue.slice(0, idx)), n);
+          mark.appendChild(document.createTextNode(t));
+          n.parentNode.insertBefore(mark, n);
+          n.parentNode.insertBefore(document.createTextNode(n.nodeValue.slice(idx + t.length)), n);
+          n.parentNode.removeChild(n);
+          break;
+        }
+      });
+    });
+  }
+  function attachHighlighter() {
+    var body = $('quizBody');
+    // 高亮选中文字：选择范围必须在对应段落内
+    Array.prototype.forEach.call(body.querySelectorAll('.hl-add'), function (btn) {
+      btn.onclick = function () {
+        var pid = btn.getAttribute('data-pid');
+        var p = passageOfPid(pid);
+        var sel = window.getSelection();
+        if (!sel || sel.isCollapsed) { toast('先在文章里划选一段文字，再点「高亮」'); return; }
+        if (!p || !p.contains(sel.getRangeAt(0).commonAncestorContainer)) { toast('请在要标记的段落内划选文字'); sel.removeAllRanges(); return; }
+        var range = sel.getRangeAt(0).cloneRange();
+        sel.removeAllRanges();
+        var mark = document.createElement('mark');
+        mark.className = 'hl';
+        try {
+          var frag = range.extractContents();
+          mark.appendChild(frag);
+          range.insertNode(mark);
+        } catch (e) { toast('这段选择无法高亮，换个划法试试'); return; }
+        // N-EXTRA-2：attachHighlighter 只给"渲染时就存在"的 <mark> 绑了点击取消，刚加的这一处没绑，
+        // 于是新高亮当场点不掉（要退出重进才行）。这里补上同款处理。
+        mark.onclick = function () {
+          var pp = passageOfPid(pid);
+          mark.remove();
+          if (pp) saveHl(pid);
+        };
+        saveHl(pid);
+      };
+    });
+    // 清除整段高亮
+    Array.prototype.forEach.call(body.querySelectorAll('.hl-clear'), function (btn) {
+      btn.onclick = function () {
+        var pid = btn.getAttribute('data-pid');
+        var p = passageOfPid(pid);
+        if (p) Array.prototype.forEach.call(p.querySelectorAll('mark.hl'), function (m) { m.remove(); });
+        saveHl(pid);
+      };
+    });
+    // 点击已高亮词 → 取消该处高亮
+    Array.prototype.forEach.call(body.querySelectorAll('mark.hl'), function (m) {
+      m.onclick = function () {
+        var p = m.parentNode && m.parentNode.closest ? m.parentNode.closest('.passage') : null;
+        var pid = p ? p.getAttribute('data-pid') : null;
+        m.remove();
+        if (pid) saveHl(pid);
+      };
+    });
   }
 
   function paperForItem(it) {
@@ -664,7 +1555,7 @@
       for (var i = 0; i < BANKS.length; i++) if (BANKS[i].id === it.paperId) return BANKS[i];
     }
     if (it.qids && it.qids.length) return C.findPaper(BANKS, it.qids[0]);
-    return BANKS[0];
+    return BANKS[0] || null;
   }
 
   // ---------- 底线模式 ----------
@@ -673,14 +1564,20 @@
     if (h.floor || h.done) { toast('今天已记录过打卡'); return; }
     var m = prompt('今天再忙，也别让英语断档——记几分钟？（1 分钟也算数，坚持最可贵）：', '10');
     if (m === null) return;
-    var min = Math.max(1, parseInt(m, 10) || 10);
-    h.floor = true; h.minutes += min; save();
-    toast('忙日打卡 ' + min + ' 分钟，坚持住了！明天继续加油 💪');
+    var min = Math.max(1, Math.min(600, parseInt(m, 10) || 10)); // 上限 600 分钟：防误输/脏值扭曲统计
+    h.floor = true; h.minutes += min;
+    var saved = save();
+    toast(saved ? '忙日打卡 ' + min + ' 分钟，坚持住了！明天继续加油 💪'
+                : '⚠️ 保存失败：忙日打卡 ' + min + ' 分钟只记在本次页面里，刷新会丢，请先导出备份');
     renderToday(); renderStat();
   };
 
   // ---------- 错题本（遗忘曲线智能调度）----------
   function renderWrong() {
+    // 按需加载：错题行渲染需要题干（卷正文），先把涉及卷拉齐再画；已加载的卷直接同步完成
+    ensurePapers(papersOfQids(C.allWrongIds(state)), function () { renderWrongInner(); });
+  }
+  function renderWrongInner() {
     var due = C.reviewQueue(state, BANKS, today); // 智能排序：逾期越久、错次越多、记忆越弱越靠前
     var all = C.allWrongIds(state);
     var sum = C.wrongSummary(state, today);
@@ -702,22 +1599,24 @@
     if (!all.length) {
       al.innerHTML = '<h3>未到期错题</h3><div class="empty">错题本还是空的，做错题后会自动进来</div>';
     } else {
-      var rest = all.filter(function (id) { return due.indexOf(id) < 0; })
+      var rest = all.filter(function (id) { return due.indexOf(id) < 0 && state.wrongbook[id]; })
         .sort(function (a, b) { return state.wrongbook[a].due < state.wrongbook[b].due ? -1 : 1; });
       var html2 = '<h3>未到期错题（' + rest.length + '）· 距下次复习由近到远</h3>';
-      if (rest.length) { html2 += rest.map(function (id) { return wrongRow(id, false); }).join(''); bindWrongRows(al, rest); }
+      if (rest.length) html2 += rest.map(function (id) { return wrongRow(id, false); }).join('');
       else html2 += '<div class="muted" style="margin-top:6px">全部错题均在上方到期区</div>';
       al.innerHTML = html2;
+      // 绑定必须在 innerHTML 之后：此时行才真正进入 DOM，否则「重练」按钮点了没反应
+      if (rest.length) bindWrongRows(al, rest);
     }
   }
   function wrongRow(id, isDue) {
-    var q = C.findQ(BANKS, id); var wb = state.wrongbook[id];
-    if (!q) return '';
+    var q = C.findQ(BANKS, id), wb = state.wrongbook[id], pp = C.findPaper(BANKS, id);
+    if (!q || !wb || !pp) return ''; // 题号/错题条目/卷任一缺失就整行不渲染，不让 null 崩掉列表（M-2/M-3）
     var od = C.dayDiff(wb.due, today); // >0 逾期天数，=0 今日到期，<0 距到期天数
     var chipTxt = isDue ? (od > 0 ? '逾期 ' + od + ' 天' : '今日到期') : (Math.abs(od) <= 1 ? '明天复习' : Math.abs(od) + ' 天后复习');
     return '<div class="wb-item" data-qid="' + esc(id) + '">' +
       '<div class="meta"><div class="stem">' + esc(String(q.qno)) + '. ' + esc((q.stem || '(选词填空第' + q.qno + '空)').slice(0, 60)) + '</div>' +
-      esc(q.typeZh || '') + ' · ' + esc(C.findPaper(BANKS, id).id) + ' · 错 ' + wb.wrongCount + ' 次 · 下次到期 ' + wb.due + ' · 稳固度 ' + Math.round((wb.ease || 2.5) / 2.8 * 100) + '%</div>' +
+      esc(q.typeZh || '') + ' · ' + esc(pp.id) + ' · 错 ' + esc(wb.wrongCount) + ' 次 · 下次到期 ' + esc(wb.due) + ' · 稳固度 ' + Math.round((wb.ease || 2.5) / 2.8 * 100) + '%</div>' +
       '<span class="chip ' + (isDue ? 'due' : 'sched') + '">' + chipTxt + '</span>' +
       '<button class="btn small">重练</button></div>';
   }
@@ -776,21 +1675,57 @@
   }
 
   function startWrongSession(ids) {
-    // 做题顺序按（卷从近到远，卷内题号升序）排：同卷同材料相邻，
-    // 整组同屏渲染时材料/音频只出现一次；选题本身仍由「智能复习」按薄弱优先决定
-    ids = ids.slice().sort(function (a, b) {
-      var pa = C.findPaper(BANKS, a), pb = C.findPaper(BANKS, b);
-      if (!pa || !pb) return 0;
-      if (pa.id !== pb.id) return pa.id < pb.id ? 1 : -1;
-      return C.findQ(BANKS, a).qno - C.findQ(BANKS, b).qno;
+    // 按需加载：先确保错题所在卷已加载（排序/分组需要卷与题数据），再开练
+    ensurePapers(papersOfQids(ids), function (ok) {
+      if (!ok) { toast('题库卷加载失败，请检查网络后重试'); return; }
+      // 卷加载成功 ≠ 题一定存在：meta 与卷正文不同步时先剔掉幽灵 qid，避免后续 TypeError
+      ids = ids.filter(function (id) { return !!C.findQ(BANKS, id); });
+      if (!ids.length) { toast('这些错题暂时找不到对应题目，已跳过'); return; }
+      // 做题顺序按（卷从近到远，卷内题号升序）排：同卷同材料相邻，
+      // 整组同屏渲染时材料/音频只出现一次；选题本身仍由「智能复习」按薄弱优先决定
+      ids = ids.slice().sort(function (a, b) {
+        var pa = C.findPaper(BANKS, a), pb = C.findPaper(BANKS, b);
+        if (!pa || !pb) return 0;
+        if (pa.id !== pb.id) return pa.id < pb.id ? 1 : -1;
+        var qa = C.findQ(BANKS, a), qb = C.findQ(BANKS, b);
+        return (qa ? qa.qno : 0) - (qb ? qb.qno : 0);
+      });
+      var byType = {};
+      ids.forEach(function (id) { var t = C.findQ(BANKS, id).type; (byType[t] = byType[t] || []).push(id); });
+      // 混合题型组：renderGroup 会按题型/材料自动分段渲染
+      var first = Object.keys(byType)[0];
+      var item = { key: 'wrong-review', type: first, qids: byType[first], done: false, minutes: 0, isWrong: true };
+      Object.keys(byType).forEach(function (t) { if (t !== first) item.qids = item.qids.concat(byType[t]); });
+      startItem(item);
     });
-    var byType = {};
-    ids.forEach(function (id) { var t = C.findQ(BANKS, id).type; (byType[t] = byType[t] || []).push(id); });
-    // 混合题型组：renderGroup 会按题型/材料自动分段渲染
-    var first = Object.keys(byType)[0];
-    var item = { key: 'wrong-review', type: first, qids: byType[first], done: false, minutes: 0, isWrong: true };
-    Object.keys(byType).forEach(function (t) { if (t !== first) item.qids = item.qids.concat(byType[t]); });
-    startItem(item);
+  }
+
+  // P3 薄弱考点专项练：错题优先 + 新题补充，最多 6 题一组，直接开练（不入今日清单）
+  function startPointSession(pt) {
+    var ids = C.pointIds(META, pt).filter(function (id) { // 按需加载：选题只用 meta 骨架
+      return state.wrongbook[id] || !state.papers[id]; // 在库错题或从未做过的题；做对并出库的不再重复练
+    });
+    if (!ids.length) { toast('该考点可练的题都做完了，去练别的考点吧'); return; }
+    ids = ids.slice(0, 6);
+    ensurePapers(papersOfQids(ids), function (ok) {
+      if (!ok) { toast('题库卷加载失败，请检查网络后重试'); return; }
+      // 同 startWrongSession：先剔掉卷里实际不存在的 qid，再排序/统计题型
+      ids = ids.filter(function (id) { return !!C.findQ(BANKS, id); });
+      if (!ids.length) { toast('该考点暂无可练题目'); return; }
+      ids.sort(function (a, b) {
+        var wa = state.wrongbook[a] ? 1 : 0, wb = state.wrongbook[b] ? 1 : 0;
+        if (wa !== wb) return wb - wa; // 错题排最前
+        var pa = C.findPaper(BANKS, a), pb = C.findPaper(BANKS, b);
+        if (!pa || !pb) return 0;
+        if (pa.id !== pb.id) return pa.id < pb.id ? 1 : -1;
+        var qa = C.findQ(BANKS, a), qb = C.findQ(BANKS, b);
+        return (qa ? qa.qno : 0) - (qb ? qb.qno : 0);
+      });
+      var types = {};
+      ids.forEach(function (id) { var t = C.findQ(BANKS, id).type; types[t] = (types[t] || 0) + 1; });
+      var type = Object.keys(types).sort(function (a, b) { return types[b] - types[a]; })[0];
+      startItem({ key: 'point-' + pt, type: type, qids: ids, done: false, minutes: 0, isPoint: true, label: '薄弱点专项·' + pt });
+    });
   }
 
   // ---------- 统计 ----------
@@ -811,26 +1746,64 @@
         else if (run === 2) cls += ' st2';
         else cls += ' st1';
       } else run = 0;
-      return '<i class="' + cls + '" title="' + d.date + ' ' + d.minutes + '分钟' + (d.floor ? '（忙日打卡）' : '') + (on ? ' · 连击第 ' + run + ' 天' : '') + '">' + txt + '</i>';
+      return '<i class="' + cls + '" title="' + esc(d.date) + ' ' + esc(d.minutes) + '分钟' + (d.floor ? '（忙日打卡）' : '') + (on ? ' · 连击第 ' + run + ' 天' : '') + '">' + txt + '</i>';
     }).join('');
-    var totalQ = 0, totalR = 0;
-    Object.keys(state.papers).forEach(function (id) { totalQ += state.papers[id].seen; totalR += state.papers[id].right; });
+    var totalQ = 0, totalR = 0, timedAll = 0, timedOk = 0, timedSec = 0;
+    Object.keys(state.papers).forEach(function (id) {
+      var p = state.papers[id];
+      if (!p) return; // 脏存档兜底：papers 里值为空则跳过（M-2）
+      totalQ += p.seen; totalR += p.right;
+    });
+    Object.keys(state.history).forEach(function (d) {
+      var x = state.history[d];
+      if (!x) return; // 脏存档兜底：history 里值为空则跳过（M-2）
+      timedAll += x.timed || 0; timedOk += x.timedWithin || 0; timedSec += x.timedSec || 0;
+    });
     $('statGrid').innerHTML =
       statCell('🔥 连击', C.streak(state.history, today) + ' 天') +
-      statCell('今日', (h ? h.minutes : 0) + ' 分钟') +
-      statCell('累计做题', totalQ + ' 题') +
-      statCell('总体正确率', totalQ ? Math.round(totalR / totalQ * 100) + '%' : '—');
+      statCell('今日', esc(h ? h.minutes : 0) + ' 分钟') +
+      statCell('累计做题', esc(totalQ) + ' 题') +
+      statCell('总体正确率', totalQ ? Math.round(totalR / totalQ * 100) + '%' : '—') +
+      statCell('限时达标', timedAll ? esc(timedOk) + '/' + esc(timedAll) + ' 组' : '—') +
+      statCell('平均每组用时', timedAll ? fmtClock(Math.round(timedSec / timedAll)) : '—');
     var acc = C.accuracyByType(state);
     var rows = '<tr><th>题型</th><th>做题数</th><th>正确数</th><th>正确率</th></tr>';
     ['listening', 'cloze', 'match', 'reading'].forEach(function (t) {
       var a = acc[t];
-      rows += '<tr><td>' + C.TYPE_META[t].zh + '</td><td>' + (a ? a.seen : 0) + '</td><td>' + (a ? a.right : 0) + '</td><td>' +
+      rows += '<tr><td>' + C.TYPE_META[t].zh + '</td><td>' + esc(a ? a.seen : 0) + '</td><td>' + esc(a ? a.right : 0) + '</td><td>' +
         (a && a.seen ? Math.round(a.right / a.seen * 100) + '%' : '—') + '</td></tr>';
     });
     $('accTable').innerHTML = rows;
 
+    // P0-b（第三轮）估分卡：客观题得分与写译估分分开显示，写译如实标注"保守档"。
+    // 旧卡把写译也按客观题正确率外推（整体归一化到 710），总分高估 20~40 分。
+    var oldEst = $('estCard');
+    if (oldEst) oldEst.remove(); // renderStat 会被多次调用，先清旧卡再插
+    var est = C.estimateScore(state, META); // 估分只依赖 state + 题型权重，与加载状态无关
+    var wt = est.writeTransEstimate || { score: 0, max: C.SCORE_WT_MAX, rate: 0, conservative: true, label: '' };
+    var estBody = est.covered
+      ? '<div class="muted" style="margin-top:4px">客观题（听力/选词/匹配/阅读）<b>' + est.objScore + '</b> / ' + est.objMax +
+        '　+　写译（写作+翻译）<b>' + wt.score + '</b> / ' + wt.max + '</div>' +
+        '<div class="muted" style="margin-top:6px">' + esc(wt.label) +
+        (wt.conservative ? '——写译是常模参照的档次评分，通常低于客观题正确率，这里不按客观正确率外推' : '') + '</div>' +
+        '<div class="muted" style="margin-top:2px">基于 ' + est.parts.length + '/4 部分客观题；未练的客观题型按同水平外推</div>' +
+        est.parts.map(function (p) {
+          var pct = Math.round(p.rate * 100);
+          return '<div style="margin-top:7px"><div class="row"><span class="muted">' + esc(p.zh) + ' · ' + esc(p.seen) + ' 题</span><b>' + pct + '%</b></div>' +
+            '<div class="prog"><i style="width:' + pct + '%"></i></div></div>';
+        }).join('')
+      : '<div class="muted">做几组客观题后，这里会按真题计分权重粗估你的分数</div>';
+    var estCard = document.createElement('div');
+    estCard.id = 'estCard';
+    estCard.className = 'card';
+    estCard.innerHTML = '<h3>🧮 CET6 估算分</h3>' +
+      '<div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:34px;font-weight:800">' + (est.covered ? est.score : '—') + '</span><span class="muted">/ 710</span></div>' +
+      (est.covered ? '<div style="margin-top:2px"><span class="badge review">写译按保守档估算</span></div>' : '') +
+      estBody;
+    $('statGrid').insertAdjacentElement('afterend', estCard);
+
     // 考点维度正确率（薄弱考点排前面；只统计做过的，不新增练习量）
-    var byPt = C.accuracyByPoint(state, BANKS);
+    var byPt = C.accuracyByPoint(state, BANKS, META); // 快照优先；旧存档回退 meta 骨架
     var ptRows = Object.keys(byPt).map(function (pt) {
       var a = byPt[pt];
       return { pt: pt, seen: a.seen, right: a.right, rate: a.seen ? a.right / a.seen : 0 };
@@ -839,16 +1812,29 @@
     var ptHtml = ptRows.map(function (r) {
       var pct = Math.round(r.rate * 100);
       var mark = pct < 60 ? ' ⚠️' : (pct >= 85 ? ' ✓' : '');
-      return '<tr><td>' + esc(r.pt) + mark + '</td><td>' + r.seen + '</td><td>' + pct + '%</td></tr>';
+      return '<tr><td>' + esc(r.pt) + mark + '</td><td>' + esc(r.seen) + '</td><td>' + pct + '%</td></tr>';
     }).join('');
+    // P3 薄弱考点专项练入口：练过 ≥3 题且正确率最低的考点一键开练
+    var wp = C.weakestPoint(state, BANKS, 3, META); // 按需加载：已加载卷 findQ 优先，meta 骨架兜底
     $('ptTable').innerHTML = ptRows.length
       ? '<tr><th>考点</th><th>做题数</th><th>正确率</th></tr>' + ptHtml
       : '<tr><td class="muted">做题后会自动按考点统计正确率，薄弱考点排在最前 ⚠️</td></tr>';
+    var ptCard = $('ptTable').parentNode;
+    var oldBtn = ptCard.querySelector('.point-train');
+    if (oldBtn) oldBtn.remove();
+    if (wp) {
+      var btn = document.createElement('div');
+      btn.className = 'actions point-train';
+      btn.style.marginTop = '2px';
+      btn.innerHTML = '<button class="btn" id="pointTrainBtn">⚡ 专项练最薄弱考点：' + esc(wp.pt) + '（正确率 ' + Math.round(wp.rate * 100) + '%，练过 ' + wp.seen + ' 题）</button>';
+      ptCard.appendChild(btn);
+      ptCard.querySelector('#pointTrainBtn').onclick = function () { startPointSession(wp.pt); };
+    }
   }
   function statCell(k, v) { return '<div class="stat-cell"><div class="v">' + v + '</div><div class="k">' + k + '</div></div>'; }
   function totalMinutes() {
     var m = 0;
-    Object.keys(state.history).forEach(function (d) { m += state.history[d].minutes || 0; });
+    Object.keys(state.history).forEach(function (d) { if (state.history[d]) m += state.history[d].minutes || 0; });
     return m;
   }
 
@@ -861,37 +1847,179 @@
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
     state.lastBackup = today; save();
-    toast('已导出，请妥善保存这份备份文件');
+    toast('已下载到浏览器「下载」目录，请移入 D:\\CET6\\backup\\ 留底');
   };
-  $('importBtn').onclick = function () { $('importFile').click(); };
-  $('importFile').onchange = function () {
+  // 私有同步状态：未配置端点时明确显示「仅本机」，避免误以为已经云端备份
+  function renderSyncStatus(s) {
+    var el = $('syncStatus'); if (!el) return;
+    var icon = { off: '⚪', syncing: '🔄', ok: '✅', error: '⚠️' }[s.state] || '⚪';
+    var t = s.lastAt ? new Date(s.lastAt).toLocaleTimeString() : "";
+    el.textContent = icon + ' ' + s.message + (t ? '（' + t + '）' : '');
+  }
+  $('syncNowBtn').onclick = function () {
+    if (!window.CET_SYNC) { toast('同步模块未加载'); return; }
+    if (!CET_SYNC.hasEndpoint()) { toast('未启用同步：请先在 sync-config.js 填端点地址'); return; }
+    if (!CET_SYNC.hasToken()) {
+      var t = prompt('输入私有同步口令（只保存在这台设备，不会写进代码或随页面发布）', '');
+      if (t === null) return;
+      t = (t || '').trim();
+      if (!t) { toast('未输入口令，同步保持关闭'); return; }
+      CET_SYNC.setToken(t);
+    }
+    if (!CET_SYNC.enabled()) { toast('同步未就绪，请刷新页面后重试'); return; }
+    CET_SYNC.pushNow().then(function (ok) {
+      toast(ok ? '同步完成' : '同步未完成，本机记录已保存');
+    });
+  };
+  // P4 错题导出 CSV：题号/卷/题型/题干/你的答案/正确答案/考点/错次/下次复习/稳固度，Excel 可直接打开
+  function csvEsc(v) {
+    v = String(v == null ? '' : v).replace(/\r/g, ' ').replace(/\n/g, ' '); // N-SEC-4：行分隔符是 \r\n，只处理 \n 会留下裸 \r
+    if (/^[=+\-@]/.test(v)) v = "'" + v; // 公式注入防护：Excel 文本前缀（M-4）
+    if (/[",\n]/.test(v)) v = '"' + v.replace(/"/g, '""') + '"';
+    return v;
+  }
+  $('wrongCsvBtn').onclick = function () {
+    var ids = C.allWrongIds(state).filter(function (id) { return !!state.wrongbook[id]; });
+    if (!ids.length) { toast('错题本是空的，做错题后再来导出'); return; }
+    // 按需加载：导出需要题干/答案（卷正文），先确保错题所在卷已加载
+    ensurePapers(papersOfQids(ids), function (ok) {
+      if (!ok) { toast('题库卷加载失败，无法导出，请检查网络后重试'); return; }
+      exportWrongCsv(ids);
+    });
+  };
+  function exportWrongCsv(ids) {
+    ids.sort(function (a, b) {
+      var pa = C.findPaper(BANKS, a), pb = C.findPaper(BANKS, b);
+      if (!pa || !pb) return 0; // 幽灵 qid：拿不到卷信息就不比，跳过（M-3）
+      if (pa.id !== pb.id) return pa.id < pb.id ? -1 : 1;
+      var qa = C.findQ(BANKS, a), qb = C.findQ(BANKS, b);
+      if (!qa || !qb) return 0;
+      return qa.qno - qb.qno;
+    });
+    var lines = ['卷号,题号,题型,题干,你的答案,正确答案,考点,错次,下次复习,稳固度'];
+    ids.forEach(function (id) {
+      var q = C.findQ(BANKS, id), wb = state.wrongbook[id], pp = C.findPaper(BANKS, id);
+      if (!q || !wb || !pp) return; // 与 wrongRow 的守卫一致：拿不到就不出行，别让 null 崩掉导出（M-3）
+      lines.push([
+        pp.id,
+        q.qno,
+        TYPE_ZH[q.type] || q.type,
+        (q.stem || (q.type === 'cloze' ? '选词填空第' + q.qno + '空' : '')).replace(/\s+/g, ' '),
+        state.papers[id] && state.papers[id].lastAnswer != null ? state.papers[id].lastAnswer : '',
+        q.answer,
+        (q.points || []).join(' / '),
+        wb.wrongCount,
+        wb.due,
+        Math.round((wb.ease || 2.5) / 2.8 * 100) + '%'
+      ].map(csvEsc).join(','));
+    });
+    var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'cet6-wrongbook-' + today + '.csv';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
+    toast('已导出 ' + (lines.length - 1) + ' 道错题（CSV）');
+  };
+  $('importBtn').onclick = function () { $('importFile').click(); };  $('importFile').onchange = function () {
     var f = this.files[0]; if (!f) return;
+    var input = this;
     var r = new FileReader();
     r.onload = function () {
+      var oldState = JSON.parse(JSON.stringify(state)); // 回滚点：解析失败/渲染异常都还原，不留下半成品（M-1）
+      var raw = String(r.result == null ? '' : r.result);
       try {
-        var s = JSON.parse(r.result);
-        if (!s || !s.version || !s.history) throw new Error('bad');
-        state = s; save();
-        toast('导入成功，打卡记录已恢复');
-        renderAll();
-      } catch (e) { toast('导入失败：不是有效的备份文件'); }
+        if (raw.length > 5 * 1024 * 1024) throw new Error('too-large'); // 体积上限 5MB，先拦再解析
+        var s = JSON.parse(raw);
+        if (!s || typeof s !== 'object' || Array.isArray(s)) throw new Error('bad');
+        if (!s.version || !s.history || !s.papers) throw new Error('bad');
+        var ns = C.normalizeState(s); // 唯一清洗入口（H-1）：字段白名单 + 类型/长度归一化
+        if (!ns.history || typeof ns.history !== 'object' || !ns.papers || typeof ns.papers !== 'object') throw new Error('bad');
+        state = pruneGhosts(ns);
+        renderAll(); // 渲染也可能因脏数据抛错，放在替换之后的 try 里，坏了就回滚
+        var saved = save();
+        toast(saved ? '导入成功，打卡记录已恢复' : '⚠️ 导入内容已在页面生效，但写入本机存储失败（空间已满/被拦截），请立即点「导出备份」留底');
+      } catch (e) {
+        state = oldState;
+        try { renderAll(); } catch (e2) { } // 回到导入前的画面
+        toast(raw.length > 5 * 1024 * 1024 ? '导入失败：备份文件超过 5MB，请确认选对了文件' : '导入失败：不是有效的备份文件（已保留原记录）');
+      }
     };
     r.readAsText(f);
-    this.value = '';
+    input.value = '';
   };
   var TYPE_ZH = { listening: '听力', cloze: '选词填空', match: '匹配', reading: '阅读', writing: '写作', translation: '翻译' };
   var SHARE_ZH = { listeningSharedWith: '听力', clozeSharedWith: '选词填空', matchSharedWith: '匹配', readingSharedWith: '仔细阅读' };
-  $('bankInfo').innerHTML = BANKS.map(function (b) {
-    var cnt = {};
-    b.questions.forEach(function (q) { cnt[q.type] = (cnt[q.type] || 0) + 1; });
-    var dist = Object.keys(cnt).map(function (t) { return (TYPE_ZH[t] || t) + cnt[t]; }).join(' · ');
-    var shared = Object.keys(SHARE_ZH).filter(function (k) { return b[k]; })
-      .map(function (k) { return SHARE_ZH[k] + '与 ' + esc(b[k]) + ' 共用'; }).join('，');
-    var extra = shared ? '，' + shared + '，未重复收录' : '';
-    var head = b.questions.length ? b.questions.length + ' 题（' + dist + ' · 写作/翻译各1' + extra + '）'
-      : '纯共用卷（客观题全共用：' + (shared || '见同考期第1套') + '，仅写作/翻译独立）';
-    return '<div>📦 ' + esc(b.id) + ' — ' + head + '</div>';
-  }).join('') + '<div class="muted" style="margin-top:6px">以后新增真题卷：把生成的 bank JS 放入 bank/ 目录，并在本文件末尾加一行 &lt;script src="..."&gt; 即可。</div>';
+  $('bankInfo').innerHTML = (function () {
+    if (!META || !META.papers) return '<div class="muted">题库元数据未就绪</div>';
+    var papers = META.papers, out = [];
+    (META.order || []).forEach(function (id) {
+      var p = papers[id];
+      if (!p) return;
+      var qL = (p.qLite || []).length;
+      var cnt = {};
+      (p.qLite || []).forEach(function (q) { cnt[q.type] = (cnt[q.type] || 0) + 1; });
+      var dist = Object.keys(cnt).map(function (t) { return esc(TYPE_ZH[t] || t) + cnt[t]; }).join(' · ');
+      var head = qL ? qL + ' 题（' + dist + ' · 写作/翻译各1）' : '纯共用卷（仅写作/翻译独立）';
+      out.push('<div>📦 ' + esc(id) + ' — ' + head + '</div>');
+    });
+    return out.join('') + '<div class="muted" style="margin-top:6px">共 ' + (META.order || []).length + ' 套真题 · 按需加载：做题时才下载对应卷，首屏体积约为全量的 1/20</div>';
+  })();
+
+  // ---------- 按需加载（架构级）：meta 骨架常驻；卷正文按需动态加载 ----------
+  var loadedPapers = {};
+  var paperInflight = {}; // pid -> 等待回调队列：同一卷并发请求只发一次（去重）
+  var PAPER_LOAD_TIMEOUT = 15000; // 15s 超时：弱网下不再无限挂起"正在加载题库卷…"
+  function loadPaperScript(pid, cb, onErr) {
+    if (loadedPapers[pid]) { cb && cb(); return; }
+    if (paperInflight[pid]) { paperInflight[pid].push({ cb: cb, onErr: onErr }); return; }
+    paperInflight[pid] = [{ cb: cb, onErr: onErr }];
+    var done = false;
+    function settle(ok) {
+      if (done) return; done = true;
+      var q = paperInflight[pid]; delete paperInflight[pid];
+      (q || []).forEach(function (w) { if (ok) { w.cb && w.cb(); } else { w.onErr && w.onErr(pid); } });
+    }
+    var s = document.createElement('script');
+    s.src = 'bank/cet6-' + pid + '.js';
+    var timer = setTimeout(function () {
+      settle(false);
+      try { if (s.parentNode) s.parentNode.removeChild(s); } catch (e) { }
+    }, PAPER_LOAD_TIMEOUT);
+    s.onload = function () {
+      clearTimeout(timer);
+      loadedPapers[pid] = 1; // 即使超时后才到，也标记已注入，防止重复 append 同卷脚本
+      settle(true);
+    };
+    s.onerror = function () { clearTimeout(timer); settle(false); };
+    document.head.appendChild(s);
+  }
+  function papersOfQids(qids) {
+    var out = {};
+    (qids || []).forEach(function (id) { var pid = C.paperIdOf(id); if (pid) out[pid] = 1; });
+    return Object.keys(out);
+  }
+  // 确保一批卷已加载：缺失的按需拉取（本地 file:// 或 SW 缓存即拿）；全部就绪后回调
+  function ensurePapers(pids, cb) {
+    var need = [];
+    pids.forEach(function (pid) { if (pid && !loadedPapers[pid] && need.indexOf(pid) < 0) need.push(pid); });
+    if (!need.length) { cb && cb(true); return; }
+    var left = need.length, failed = 0;
+    toast('正在加载题库卷…');
+    need.forEach(function (pid) {
+      loadPaperScript(pid, function () { left--; if (!left) cb && cb(failed === 0); },
+        function (p2) { failed++; left--; if (!left) cb && cb(false); });
+    });
+  }
+  // 做题前确保本组涉及的卷就绪（客观题组按 qid 求卷；写译/复习组带上 paperId）
+  function ensureItemReady(it, cb) {
+    var pids = papersOfQids(it.qids || []);
+    if (it.paperId) pids.push(it.paperId);
+    ensurePapers(pids, function (ok) {
+      if (!ok) { toast('题库卷加载失败，请检查网络后重试'); quizExit(); return; }
+      cb();
+    });
+  }
 
   // ---------- 导航 ----------
   Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (b) {
@@ -913,9 +2041,35 @@
   function renderAll() {
     renderToday(); renderWrong(); renderStat();
   }
-  $('todayLabel').textContent = today;
-  bindUserChip();
-  renderAll();
+
+  // ---------- 多标签页协调 + 跨午夜轮转 ----------
+  var pendingResync = false; // 做题会话中收到的外部写入先挂着，退出会话时再同步
+  // 另一标签页写入了同编号存档：本页若空闲则立即重载 state 并重渲染，
+  // 避免继续持有旧内存状态、下一次 save() 把另一页的进度整份覆盖（整存整取模型的固有风险）
+  window.addEventListener('storage', function (e) {
+    if (!e || !STATE_KEY || e.key !== STATE_KEY) return;
+    if (session) { pendingResync = true; return; }
+    try {
+      state = pruneGhosts(C.loadState(store, STATE_KEY, null));
+      renderAll();
+      toast('已在另一标签页更新，本页已同步');
+    } catch (err) { }
+  });
+  // today 只在启动时固定一次：挂到跨午夜后回到前台，自动切日期并按新日期重算清单
+  function rolloverIfNeeded() {
+    var now = C.todayStr();
+    if (now === today) return;
+    today = now;
+    var lbl = $('todayLabel'); if (lbl) lbl.textContent = today;
+    if (state) state.plan = null; // 交给 ensurePlan 按新日期重算
+    renderAll();
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') rolloverIfNeeded(); });
+  setInterval(rolloverIfNeeded, 60000);
+
+  // ---------- 启动（N-SEC-2）：登录与初始化都在最后一步做，保证上面的绑定语句一定执行过 ----------
+  if (/^\d{4}$/.test(user)) startSession(user);
+  else showLogin();
 })();
 </script>
 
